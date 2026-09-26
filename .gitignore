@@ -1,0 +1,22 @@
+# Generated build outputs
+dist/
+
+# Download cache
+tools/.cache/
+
+# Test probes / dumps
+.probe/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Node modules / caches
+node_modules/
+.npm/
+package-lock.json

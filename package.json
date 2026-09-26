@@ -1,0 +1,26 @@
+{
+  "name": "devanagari-popup-dictionary",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Popup (hover) dictionary browser extension for Hindi and Marathi, in the spirit of Perapera Chinese.",
+  "type": "commonjs",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "check": "node tools/check-js.js",
+    "verify": "npm run check && npm test",
+    "dict:fetch": "python tools/fetch_sources.py --defaults",
+    "dict:build": "python tools/build_dict.py --defaults",
+    "dict": "npm run dict:fetch && npm run dict:build",
+    "dict:all": "python tools/fetch_sources.py --all && python tools/build_dict.py --all",
+    "package": "python tools/build_zip.py",
+    "start": "web-ext run --source-dir src",
+    "lint:amo": "web-ext lint --source-dir src"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "web-ext": "^8.3.0"
+  }
+}

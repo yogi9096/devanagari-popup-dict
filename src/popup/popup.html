@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Devanagari Popup Dictionary</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="head">
+    <div class="title">
+      <span class="glyph" aria-hidden="true">अ</span>
+      <span>
+        <strong>Devanagari Dictionary</strong>
+        <small id="status-line">loading…</small>
+      </span>
+    </div>
+    <label class="switch" title="Turn the dictionary on or off everywhere">
+      <input type="checkbox" id="enabled" aria-label="Enabled">
+      <span class="slider"></span>
+    </label>
+  </header>
+
+  <section class="section">
+    <label class="row">
+      <input type="checkbox" id="site-enabled">
+      <span>Look up words on <b id="site-host">this site</b></span>
+    </label>
+  </section>
+
+  <section class="section">
+    <h2>Languages</h2>
+    <label class="row"><input type="checkbox" id="lang-hi"> <span>Hindi <small id="count-hi"></small></span></label>
+    <label class="row"><input type="checkbox" id="lang-mr"> <span>Marathi <small id="count-mr"></small></span></label>
+    <p class="hint" id="pack-hint"></p>
+  </section>
+
+  <section class="section">
+    <h2>Trigger</h2>
+    <div class="segmented" role="group" aria-label="Trigger mode">
+      <button type="button" data-trigger="hover">Hover</button>
+      <button type="button" data-trigger="modifier">Shift + hover</button>
+    </div>
+    <p class="hint">Tip: press <kbd>Esc</kbd> to close a popup, click the pin to keep it open.</p>
+  </section>
+
+  <footer class="foot">
+    <button type="button" class="link" id="open-options">All settings</button>
+    <button type="button" class="link" id="open-catalog">Dictionary sources</button>
+  </footer>
+
+  <script src="../common/compat.js"></script>
+  <script src="../common/settings.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

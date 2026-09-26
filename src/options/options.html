@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Devanagari Popup Dictionary &ndash; Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="head">
+      <span class="glyph" aria-hidden="true">&#2309;</span>
+      <div>
+        <h1>Devanagari Popup Dictionary</h1>
+        <p class="sub">Hover over any Hindi or Marathi word to see its pronunciation, part of speech and English meaning.</p>
+      </div>
+    </header>
+
+    <section class="card" aria-labelledby="h-general">
+      <h2 id="h-general">General</h2>
+      <label class="row"><input type="checkbox" id="enabled">
+        <span><strong>Enable the dictionary</strong><br><small>Master switch. When off, nothing is injected or fetched.</small></span></label>
+      <label class="row"><input type="checkbox" id="lang-hi">
+        <span><strong>Hindi</strong> <small id="count-hi"></small></span></label>
+      <label class="row"><input type="checkbox" id="lang-mr">
+        <span><strong>Marathi</strong> <small id="count-mr"></small></span></label>
+      <div class="row">
+        <label for="primary">Look up first in</label>
+        <select id="primary">
+          <option value="hi">Hindi</option>
+          <option value="mr">Marathi</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-trigger">
+      <h2 id="h-trigger">Trigger</h2>
+      <div class="row">
+        <label for="trigger">Show the popup on</label>
+        <select id="trigger">
+          <option value="hover">Hover</option>
+          <option value="modifier">Modifier + hover</option>
+        </select>
+      </div>
+      <div class="row" id="modifier-row">
+        <label for="modifier">Modifier key</label>
+        <select id="modifier">
+          <option value="Shift">Shift</option>
+          <option value="Control">Ctrl</option>
+          <option value="Alt">Alt</option>
+          <option value="Meta">Meta / Cmd</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="hover-delay">Popup delay (ms)</label>
+        <input type="number" id="hover-delay" min="0" max="5000" step="10">
+      </div>
+      <div class="row">
+        <label for="hide-delay">Hide delay (ms)</label>
+        <input type="number" id="hide-delay" min="0" max="5000" step="10">
+      </div>
+      <label class="row"><input type="checkbox" id="allow-frames">
+        <span><strong>Also work inside frames</strong><br><small>Disabled by default; each frame loads its own copy of the dictionaries.</small></span></label>
+      <div class="row column">
+        <label for="disabled-hosts"><strong>Disabled sites</strong>
+          <small>One hostname per line.</small></label>
+        <textarea id="disabled-hosts" rows="4" spellcheck="false" placeholder="one host per line"></textarea>
+      </div>
+    </section>
+    <section class="card" aria-labelledby="h-popup">
+      <h2 id="h-popup">Popup</h2>
+      <label class="row"><input type="checkbox" id="show-romanization">
+        <span><strong>Show pronunciation (ISO 15919)</strong><br><small>Romanised transliteration of each Devanagari headword.</small></span></label>
+      <div class="row">
+        <label for="scheme">Pronunciation style</label>
+        <select id="scheme">
+          <option value="iso15919">Scholarly with diacritics (a&#7749;k)</option>
+          <option value="simplified">Plain Latin (ank)</option>
+        </select>
+      </div>
+      <label class="row"><input type="checkbox" id="show-derived">
+        <span><strong>Resolve inflections</strong><br><small>Offer the dictionary form of declined or conjugated words, e.g. &#2354;&#2337;&#2325;&#2367;&#2351;&#2379; &rarr; &#2354;&#2337;&#2325;&#2368;.</small></span></label>
+      <label class="row"><input type="checkbox" id="show-context">
+        <span><strong>Show the sentence under the cursor</strong></span></label>
+      <label class="row"><input type="checkbox" id="show-tts">
+        <span><strong>Speaker button</strong><br><small>Uses your system&rsquo;s Hindi/Marathi voice, if one is installed.</small></span></label>
+      <label class="row"><input type="checkbox" id="show-source">
+        <span><strong>Show the dictionary name and licence</strong></span></label>
+      <div class="row">
+        <label for="max-matches">Entries per popup</label>
+        <input type="number" id="max-matches" min="1" max="10" step="1">
+      </div>
+      <div class="row">
+        <label for="theme">Theme</label>
+        <select id="theme">
+          <option value="auto">Follow the page</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="font-size">Font size (px)</label>
+        <input type="number" id="font-size" min="10" max="28" step="1">
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-sources">
+      <h2 id="h-sources">Dictionary packs</h2>
+      <p class="sub">Packs are shipped with the extension and read entirely offline. Toggle the ones you want.</p>
+      <div id="packs"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-data">
+      <h2 id="h-data">Backup</h2>
+      <div class="row wrap-buttons">
+        <button type="button" id="export">Export settings</button>
+        <button type="button" id="import-btn">Import settings</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+        <button type="button" id="reset">Reset to defaults</button>
+      </div>
+      <p class="sub" id="save-state" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="../common/compat.js"></script>
+  <script src="../common/settings.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
