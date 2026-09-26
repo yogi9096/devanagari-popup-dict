@@ -5,12 +5,15 @@
   "version": "0.1.0",
   "description": "Hover over any Hindi or Marathi word to see its pronunciation, part of speech and English meaning. Works offline, no tracking.",
   "author": "Devanagari Popup Dictionary contributors",
-  "homepage_url": "https://github.com/your-name/devanagari-popup-dictionary",
+  "homepage_url": "https://github.com/yogi9096/devanagari-popup-dict",
 
   "browser_specific_settings": {
     "gecko": {
-      "id": "devanagari-dict@example.org",
-      "strict_min_version": "115.0"
+      "id": "devanagari-dict@yogi9096.github.io",
+      "strict_min_version": "115.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   },
 
@@ -23,8 +26,7 @@
   ],
 
   "background": {
-    "scripts": ["background/background.js"],
-    "service_worker": "background/background.js"
+    "scripts": ["background/background.js"]
   },
 
   "content_scripts": [
