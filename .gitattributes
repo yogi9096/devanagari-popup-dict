@@ -1,0 +1,21 @@
+# Normalise line endings so a build is reproducible from any checkout.
+#
+# tools/build_zip.py packs the working tree as it stands, so the archive's bytes
+# depend on the line endings the checkout happened to produce.  With
+# core.autocrlf left to the platform, a Windows checkout is CRLF and a Linux one
+# is LF, and the two archives differ even though the committed content is
+# identical - which is no use to a reviewer trying to reproduce the exact upload.
+#
+# Everything textual is therefore LF in the working tree, on every platform.
+* text=auto eol=lf
+
+# Images are binary; never let git try to normalise them.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.webp binary
+
+# Build outputs and the download cache are never committed.
+dist/ export-ignore
+tools/.cache/ export-ignore
