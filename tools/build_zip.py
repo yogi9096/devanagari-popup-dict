@@ -4,9 +4,16 @@
     python tools/build_zip.py            -> dist/devanagari-dict-<version>.zip
     python tools/build_zip.py --out my.zip
 
-The archive is byte-for-byte reproducible: entries are sorted, timestamps are
-pinned and permissions are normalised, so re-running the tool on an unchanged
-tree produces the same hash.
+The archive is reproducible for a given working tree: entries are sorted,
+timestamps are pinned and permissions are normalised, so re-running the tool
+without touching a file produces the same hash.
+
+Note that "for a given working tree" is doing real work.  A packer that reads
+files from disk also reads whatever line endings they happen to have, and git
+rewrites them on checkout: with core.autocrlf=true a fresh clone gets CRLF where
+an LF working tree has LF, which changes the archive's bytes.  Pinning line
+endings for the repository (a .gitattributes with eol=lf) is what would make two
+machines produce the same zip from the same commit.
 
 Dictionary packs are chosen from src/dict/index.json rather than by walking the
 directory.  A pack that is built but not in the catalogue is inert at runtime
