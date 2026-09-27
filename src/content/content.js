@@ -439,23 +439,72 @@
   }
 
   /**
+   * Resolve once the platform has enumerated its voices, or after `timeoutMs`.
+   *
+   * `getVoices()` is empty for a moment after a page loads, and the first click
+   * on the speaker usually lands inside that window - so a lookup that would
+   * have worked is declined for want of a list that was about to arrive.  The
+   * wait is bounded because a platform with genuinely no voices never fires
+   * `voiceschanged` at all.
+   */
+  function voicesReady(timeoutMs) {
+    if (refreshVoices().length) {
+      return Promise.resolve(true);
+    }
+    const synth = global.speechSynthesis;
+    if (!synth || typeof synth.addEventListener !== 'function') {
+      return Promise.resolve(false);
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (ready) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        synth.removeEventListener('voiceschanged', onChange);
+        global.clearTimeout(timer);
+        resolve(ready);
+      };
+      const onChange = () => finish(refreshVoices().length > 0);
+      const timer = global.setTimeout(() => finish(false), timeoutMs || 400);
+      synth.addEventListener('voiceschanged', onChange);
+    });
+  }
+
+  /** A voice for `lang`, else any voice at all - for reading a transliteration. */
+  function pickAnyVoice() {
+    const list = refreshVoices();
+    return pickVoice('en-IN') || pickVoice('en-GB') || pickVoice('en-US') || list[0] || null;
+  }
+
+  /**
    * Speak `text` in `lang` (a BCP-47 tag the tooltip chose, matching the
    * language the answer is written in).
    *
-   * The Web Speech API reports a missing or wrong-language voice only through
-   * `onerror`, and says nothing at all when the platform has no voices installed.
-   * A reader pressing A would otherwise just get silence, with no way to tell
-   * "this profile has no Hindi voice" from "the shortcut is broken", so the
-   * utterance is instrumented and the reason is logged.
+   * Three things are wrong with the obvious version of this, all of which present
+   * as "the speaker does nothing":
    *
-   * `speechSynthesis.cancel()` is deliberately not called first.  Gecko
-   * dispatches a cancel asynchronously, so one issued in the same task as
-   * `speak()` lands *after* the new utterance and takes it down with it - which
-   * is the whole reason pressing the speaker did nothing.  A one-word answer is
-   * short enough that letting an earlier one finish is cheaper than losing this
-   * one.
+   *  - `speechSynthesis.cancel()` must not be called first.  Gecko dispatches a
+   *    cancel asynchronously, so one issued in the same task as `speak()` lands
+   *    *after* the new utterance and takes it down with it.  A one-word answer
+   *    is short enough that letting an earlier one finish is cheaper.
+   *  - The voice list is empty until the platform has enumerated it, and Firefox
+   *    then fires `voiceschanged`; reading it once on the click misses it on a
+   *    cold start, which is most first clicks.
+   *  - Plenty of systems have no voice for the answer's language at all - a
+   *    machine with only en-US and en-IN voices cannot pronounce Devanagari, and
+   *    the Web Speech API says nothing when handed text no installed voice can
+   *    render.  Rather than be silent, fall back to reading the *romanisation*,
+   *    which is what the popup is already showing and which an English or Indian
+   *    English voice can approximate.  Diacritics are stripped for this: an
+   *    English voice asked for "sīkhnā" will not do better than one asked for
+   *    "sikhnā".
+   *
+   * Every outcome is logged, because a reader who presses A and hears nothing
+   * cannot otherwise tell "no Hindi voice on this system" from "broken".
    */
-  function speak(text, lang) {
+  async function speak(text, lang, romanText) {
     if (typeof global.speechSynthesis === 'undefined'
       || typeof global.SpeechSynthesisUtterance === 'undefined'
       || !text) {
@@ -464,21 +513,41 @@
     const warn = global.console && typeof global.console.warn === 'function'
       ? (message) => global.console.warn('[devanagari-dict] speech: ' + message)
       : () => {};
-    const utterance = new global.SpeechSynthesisUtterance(text);
-    utterance.lang = lang || 'hi-IN';
-    const voice = pickVoice(utterance.lang);
-    if (voice) {
-      utterance.voice = voice;
-    } else {
+
+    // Ask the platform once more, briefly: a click in the first moments after a
+    // page loads would otherwise be declined for a list that was about to arrive.
+    await voicesReady(400);
+
+    const wanted = lang || 'hi-IN';
+    let voice = pickVoice(wanted);
+    let spoken = text;
+
+    if (!voice && romanText) {
+      const substitute = pickAnyVoice();
+      if (substitute) {
+        voice = substitute;
+        spoken = romanText;
+        warn('no voice installed for ' + wanted + '; reading the romanisation "'
+          + romanText + '" with ' + (substitute.lang || 'the default voice')
+          + ' instead.  Install a ' + wanted.slice(0, 2) + ' speech pack for a real pronunciation.');
+      }
+    }
+    if (!voice) {
       const list = refreshVoices();
-      warn('no voice for ' + utterance.lang + '; installed: '
+      warn('no voice for ' + wanted + '; installed: '
         + (list.length
           ? list.map((entry) => entry.lang).filter(Boolean).join(', ')
           : '(the platform reports no voices at all)'));
     }
+
+    const utterance = new global.SpeechSynthesisUtterance(spoken);
+    utterance.lang = (voice && voice.lang) || wanted;
+    if (voice) {
+      utterance.voice = voice;
+    }
     utterance.rate = 0.9;
     utterance.onerror = (event) => {
-      warn((event && event.error ? event.error : 'failed') + ' for "' + text + '"');
+      warn((event && event.error ? event.error : 'failed') + ' for "' + spoken + '"');
     };
     try {
       global.speechSynthesis.speak(utterance);
@@ -851,6 +920,11 @@
     } catch (error) {
       state.inFrame = true; // cross-origin parent: treat as a frame
     }
+
+    // Start the platform enumerating its voices now rather than on the first
+    // click.  getVoices() is empty until that finishes, and a reader's first
+    // press of the speaker is exactly when it is most likely to still be running.
+    refreshVoices();
 
     settingsModule.load().then((settings) => {
       // setActive() schedules the idle warm-up when the dictionary is on.

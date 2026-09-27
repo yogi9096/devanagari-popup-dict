@@ -235,10 +235,24 @@ selection from the keyboard, and the right-click menu offers the same, which is
 how a lookup works on a touch screen or a page that scrolls under a stationary
 pointer.
 
-If a pronunciation does not play, the reason is logged to the browser console as
-`[devanagari-dict] speech: …` — the usual cause is that the platform has no
-Hindi voice installed, which is a system setting rather than a fault in the
-extension.
+If a pronunciation does not play, the browser console says why as
+`[devanagari-dict] speech: …`. The usual cause is not a bug in the extension but
+that the operating system has no Hindi voice installed:
+
+- **Windows** — *Settings → Time & language → Language & region → Add a
+  language → Hindi (India)*, then *Language options → Speech*, and install the
+  Hindi voice (Microsoft Ravi). Firefox picks it up on the next page load.
+- **Linux** — install a speech-dispatcher voice and the `espeak-ng` data
+  (`espeak-ng-data` provides `hi`), then restart Firefox.
+- **macOS** — *System Settings → Accessibility → Spoken Content → System
+  Voices → Manage Voices*, and download a Hindi (India) voice.
+
+Firefox reports what it can see, so a line naming only `en-US` and `en-IN` means
+there is genuinely no Hindi voice. Rather than stay silent, the extension then
+reads the **romanisation** with an available English voice — the same text the
+popup is already showing. It is a rough approximation, because Devanagari
+distinctions such as retroflex *ṭ/ṭ* and vocalic *ṛ* do not survive the trip to
+ASCII. Installing a Hindi voice is the only way to hear a real pronunciation.
 
 ---
 

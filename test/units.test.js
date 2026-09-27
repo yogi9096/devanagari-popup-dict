@@ -363,6 +363,53 @@ describe('tooltip helpers', () => {
     assert.match(tooltip.CSS, /\.decdi\s*\{[^}]*display:\s*flex/);
   });
 
+  it('offers a Latin-letter rendering for when no Devanagari voice exists', () => {
+    // A machine with only en-US/en-IN voices cannot pronounce Devanagari and the
+    // Web Speech API says nothing when handed text no installed voice can render,
+    // so the extension reads the romanisation instead.  The console line the
+    // reader saw ("no voice for hi-IN; installed: en-US, en-IN, ...") is this
+    // case, and it must not leave them with silence.
+    const everyday = { headword: 'learn', gloss: 'सीखना; रटना', roman: '', pack: { targetLang: 'hi' } };
+    // Only the first word of the answer is spoken, Devanagari first.
+    assert.equal(tooltip.speechTextFor(everyday), 'सीखना');
+    // सीखना -> sīkhanā -> sikhana.  The macrons are stripped because an English
+    // voice reads them as separate letters.
+    assert.equal(tooltip.speechFallbackFor(everyday), 'sikhana');
+    assert.doesNotMatch(tooltip.speechFallbackFor(everyday), /[^\x00-\x7F]/);
+
+    // The pack's own ISO 15919 is preferred over a re-derivation, and stripped
+    // of diacritics for an English voice.
+    assert.equal(
+      tooltip.speechFallbackFor({ headword: 'water', gloss: 'जल; पानी', roman: 'pānī', pack: {} }),
+      'pani',
+    );
+
+    // Nothing Devanagari and no romanisation: there is no fallback to offer, so
+    // the caller falls back to speaking the answer unchanged.
+    assert.equal(tooltip.speechFallbackFor({ headword: 'Learn', gloss: '', pack: {} }), '');
+    assert.equal(tooltip.speechFallbackFor(null), '');
+  });
+
+  it('passes the fallback through to the speech callback', () => {
+    const spoken = [];
+    const view = new tooltip.Tooltip({
+      document: { addEventListener() {}, removeEventListener() {} },
+      settings: { showTts: true },
+      onRequestSpeak: (text, lang, roman) => spoken.push({ text, lang, roman }),
+    });
+    view.result = {
+      query: 'learn',
+      matches: [{ headword: 'learn', gloss: 'सीखना', roman: 'sīkhnā', pack: { targetLang: 'hi' } }],
+    };
+    view.visible = true;
+    assert.equal(view.speakCurrent(), true);
+    assert.equal(spoken[0].text, 'सीखना');
+    assert.equal(spoken[0].lang, 'hi-IN');
+    // Simplified, not the pack's ISO 15919: an English voice cannot be asked for
+    // "sīkhnā" and get anything better than one asked for "sikhna".
+    assert.equal(spoken[0].roman, 'sikhna');
+  });
+
   it('never treats a keystroke in a field as a shortcut', () => {
     // The popup is very often open over a search box, so "a" and "c" have to
     // reach the field rather than the dictionary.

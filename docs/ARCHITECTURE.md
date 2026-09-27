@@ -308,15 +308,26 @@ fails in ways that are otherwise indistinguishable from "the shortcut is broken"
   so one issued in the same task as `speak()` lands *after* the new utterance and
   takes it down with it. The previous code did exactly that, which is why pressing
   the speaker produced nothing.
-- **The voice list is cached, not sampled once.** `getVoices()` is empty until
-  the platform finishes enumerating and Firefox then fires `voiceschanged`.
-  Reading it synchronously on the click misses the list on a cold start, so it is
-  cached and refreshed on that event.
+- **The voice list is waited for, not just read.** `getVoices()` is empty for a
+  moment after a page loads and Firefox then fires `voiceschanged`; reading it
+  once on the click misses it, and the first click is exactly when a reader is
+  most likely to try the speaker. Enumeration is started at bootstrap and
+  `speak()` waits (bounded, because a platform with no voices never fires the
+  event) before deciding.
 - **Every failure is logged.** A wrong-language or missing voice is reported
-  only through `utterance.onerror`, and a platform with no voices installed says
-  nothing at all. The utterance carries an `onerror` handler and the no-voice case
-  is warned about explicitly, because "this profile has no Hindi voice" is a
-  system setting the reader has to fix and they cannot act on it otherwise.
+  only through `utterance.onerror`, and a platform with no voices says nothing at
+  all. The utterance carries an `onerror` handler and the no-voice case is
+  warned about explicitly, because "this profile has no Hindi voice" is a system
+  setting the reader has to fix and they cannot act on it otherwise. The log
+  names the installed voices, so "no voice for hi-IN; installed: en-US, en-IN,
+  …" is immediately actionable.
+- **A missing voice degrades instead of going silent.** With no voice for the
+  answer's language, reading the Devanagari with an English voice produces
+  nothing, so the extension reads the *romanisation* — diacritics stripped,
+  because an English voice asked for `sīkhanā` does no better than one asked for
+  `sikhna`. It is an approximation, not a pronunciation: retroflex *ṭ* and
+  vocalic *ṛ* do not survive the trip to ASCII. That is stated in the log and in
+  the README rather than glossed over.
 
 The popup's <kbd>A</kbd>/<kbd>C</kbd>/<kbd>Shift</kbd> shortcuts live in
 `Tooltip.handleKey()` and are suppressed whenever focus is in a text field or a

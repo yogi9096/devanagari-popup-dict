@@ -232,6 +232,30 @@
   }
 
   /**
+   * The same answer as Latin letters, for reading aloud when the platform has no
+   * voice for Devanagari.  Always the *simplified* romanisation, not the
+   * displayed scheme: an English voice asked for "sīkhnā" does no better than one
+   * asked for "sikhnā", and the macrons are read as separate letters.
+   *
+   * Prefers the pack's own ISO 15919 when it supplied one, since that is a
+   * transliteration rather than a re-derivation, but only for a Devanagari
+   * answer: for a Latin headword it would just be the word again.
+   */
+  function speechFallbackFor(match) {
+    if (!match) {
+      return '';
+    }
+    const answer = devanagari.firstDevanagariToken(match.gloss || '');
+    if (!answer) {
+      return match.roman ? translit.simplify(match.roman) : '';
+    }
+    if (match.roman && devanagari.hasDevanagari(answer)) {
+      return translit.simplify(match.roman);
+    }
+    return translit.romanize(answer, 'simplified');
+  }
+
+  /**
    * The BCP-47 tag the answer should be spoken in, taken from the pack rather
    * than hard-coded, so a pack answering in another language would be spoken in
    * that language without a change here.
@@ -288,6 +312,9 @@
 
     /**
      * Speak the answer, in the language the pack answers in.
+     *
+     * `onRequestSpeak` also gets a Latin-letter rendering, used only when the
+     * platform has no voice for Devanagari - see speechFallbackFor().
      * @returns {boolean} whether anything was spoken
      */
     speakCurrent() {
@@ -298,6 +325,7 @@
       this.onRequestSpeak(
         match ? speechTextFor(match) : this.result.query,
         match ? speechLangFor(match) : null,
+        match ? speechFallbackFor(match) : '',
       );
       return true;
     }
@@ -754,6 +782,7 @@
     isEditableTarget,
     pronunciationFor,
     speechTextFor,
+    speechFallbackFor,
     speechLangFor,
     CSS,
     MAX_VISIBLE_GLOSS,
