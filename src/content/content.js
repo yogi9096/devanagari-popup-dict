@@ -177,6 +177,13 @@
     if (!state.tooltip) {
       return;
     }
+    // A forced dismissal - click away, Escape, the looked-up node being removed -
+    // ends the popup for good, so it must not stay pinned: a hover popup that
+    // inherited the pin would never close on its own.  An *unforced* hide is the
+    // hover path, and refusing it is exactly what pinning is for.
+    if (force) {
+      state.tooltip.pinned = false;
+    }
     state.tooltip.hide(force);
     state.current = null;
   }
@@ -323,12 +330,21 @@
   }
 
   /**
-   * The primary trigger: release the mouse over a selected word.
+   * The primary trigger, and the dismissal.
    *
-   * The selection rules decide whether the gesture was a lookup; a paragraph
-   * drag or a Ctrl+A is declined there, so nothing happens here either.  The
-   * context menu and Alt+Shift+L call lookupSelection(true) directly and so work
-   * even when the trigger is set to hover only.
+   * One release of the mouse is either a request for a meaning or a click on the
+   * page, and the two are told apart by the same selection rules the lookup
+   * itself uses.  A release over a selected word opens the popup; a release
+   * anywhere else - empty space, a link, another paragraph - dismisses what is
+   * open, because that is what a reader clicking away expects to happen.
+   *
+   * This is deliberately handled on `mouseup` and not on `click`.  `click` fires
+   * *after* the mouse-up that opened the popup, so a click-away listener would
+   * close the popup the same gesture had just opened, and no selection-based
+   * lookup would ever survive.
+   *
+   * The context menu and Alt+Shift+L call lookupSelection(true) directly and so
+   * work even when the trigger is set to hover only.
    */
   function handleMouseUp(event) {
     if (!state.active || !state.settings) {
@@ -337,19 +353,24 @@
     if (event.button !== 0) {
       return;
     }
+    // The popup's own buttons (speak, copy, pin, a suggestion) are inside the
+    // host, and they act on the popup rather than dismissing it.
     if (state.tooltip && state.tooltip.contains(event.target)) {
       return;
     }
-    if (!settingsModule.onSelection(state.settings)) {
-      return;
-    }
     // Shift-click extends an existing selection, so releasing after one is
-    // finishing a multi-step selection rather than asking about a word.
+    // finishing a multi-step selection rather than asking about a word.  The
+    // popup is left alone rather than dismissed, because a shift-click is a
+    // continuation of the gesture that opened it.
     if (event.shiftKey) {
       return;
     }
     clearTimers();
-    lookupSelection().catch(() => undefined);
+    if (settingsModule.onSelection(state.settings) && resolveSelection()) {
+      lookupSelection().catch(() => undefined);
+      return;
+    }
+    hide(true);
   }
 
   function handleScroll() {
@@ -376,9 +397,6 @@
   function handleKeyDown(event) {
     if (event.key === 'Escape') {
       hide(true);
-      if (state.tooltip) {
-        state.tooltip.pinned = false;
-      }
     }
   }
 
@@ -574,18 +592,22 @@
    *   that works on a touch screen or under scripted scrolling.
    * @returns {Promise<boolean>} whether a popup was shown
    */
-  async function lookupSelection(explicit) {
-    if (!state.settings) {
-      return false;
-    }
-    if (!explicit && !settingsModule.onSelection(state.settings)) {
-      return false;
-    }
+  /**
+   * Decide whether the current selection is a lookup, and prepare it.
+   *
+   * Split out of lookupSelection() so handleMouseUp() can ask the same question
+   * *synchronously*.  It has to: whether a mouse-up opens a popup or dismisses
+   * the open one is the same decision, and answering it after awaiting the
+   * dictionary would leave the popup on screen for the length of a lookup.
+   *
+   * @returns {?{entry: object, rect: ?object}} null when the gesture is declined,
+   *   in which case `lastDecline` says why.
+   */
+  function resolveSelection() {
     const found = readSelection();
     if (!found) {
-      return false;
+      return null;
     }
-
     const verdict = selectionModule.evaluate(found.text, {
       maxWords: state.settings.maxSelectionWords,
       maxChars: state.settings.maxSelectionChars,
@@ -594,21 +616,34 @@
       // Deliberately quiet: a reader who selected a paragraph did not ask for a
       // popup and does not need to be told why there wasn't one.
       state.lastDecline = verdict.reason;
-      return false;
+      return null;
     }
-
     // Belt and braces for a short page that can be selected in its entirety.
-    if (selectionModule.looksLikeSelectAll(
-      found.text.length, documentTextLength(),
-    )) {
+    if (selectionModule.looksLikeSelectAll(found.text.length, documentTextLength())) {
       state.lastDecline = selectionModule.REASONS.SELECT_ALL;
-      return false;
+      return null;
     }
-
     // Anchor the highlight on the word inside the selection, so the popup points
     // at the right place even when a phrase was selected.
     const anchor = anchorFor(found, verdict);
     if (!anchor) {
+      return null;
+    }
+    return {
+      entry: { node: anchor.node, word: verdict.query, start: anchor.start, end: anchor.end },
+      rect: found.rect,
+    };
+  }
+
+  async function lookupSelection(explicit) {
+    if (!state.settings) {
+      return false;
+    }
+    if (!explicit && !settingsModule.onSelection(state.settings)) {
+      return false;
+    }
+    const resolved = resolveSelection();
+    if (!resolved) {
       return false;
     }
     if (state.tooltip) {
@@ -616,12 +651,7 @@
       // or picks another word, rather than vanishing when the mouse moves away.
       state.tooltip.pinned = true;
     }
-    await showForEntry({
-      node: anchor.node,
-      word: verdict.query,
-      start: anchor.start,
-      end: anchor.end,
-    }, found.rect);
+    await showForEntry(resolved.entry, resolved.rect);
     return true;
   }
 

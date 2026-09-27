@@ -33,6 +33,7 @@ dependencies.
   page CSS via an open `ShadowRoot`.
 - 📌 **Pinning & copying**: Press <kbd>Shift</kbd> or click the pin button to
   freeze the popup in place; press <kbd>C</kbd> to copy the word and answer.
+  Clicking anywhere on the page dismisses it.
 - 🎛️ **Hover if you prefer it**: *Look up on hover* is one setting away, and
   can be limited to holding <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>.
   Plus a per-site disable list.
@@ -224,13 +225,17 @@ With the popup open:
 
 The letter shortcuts are ignored while the cursor is in a text field and while
 <kbd>Ctrl</kbd>/<kbd>Alt</kbd>/<kbd>Meta</kbd> is held, so they cannot swallow
-typing. A popup opened by selecting a word is already pinned, so it stays while
-you read it; <kbd>Esc</kbd> or the ✕ closes it, and <kbd>Shift</kbd> releases a
-hover popup. `Alt`+`Shift`+<kbd>L</kbd> looks up the current selection from the
-keyboard, and the right-click menu offers the same, which is how a lookup works
-on a touch screen or a page that scrolls under a stationary pointer.
+typing.
 
-If a pronunciation does not play, the reason is logged to the page console as
+A popup opened by selecting a word is already pinned, so it stays while you read
+it; <kbd>Esc</kbd>, the ✕, or a click anywhere on the page closes it. Clicking
+*inside* the popup does not close it, and selecting another word replaces it
+rather than closing it. `Alt`+<kbd>Shift</kbd>+<kbd>L</kbd> looks up the current
+selection from the keyboard, and the right-click menu offers the same, which is
+how a lookup works on a touch screen or a page that scrolls under a stationary
+pointer.
+
+If a pronunciation does not play, the reason is logged to the browser console as
 `[devanagari-dict] speech: …` — the usual cause is that the platform has no
 Hindi voice installed, which is a system setting rather than a fault in the
 extension.

@@ -272,8 +272,20 @@ The popup tooltip is attached to the page inside an open `ShadowRoot`:
   with "does not exist" in the *page* console even though the hook is set; it has
   to be read with this extension's content-script context selected in the
   DevTools console. Found by trying it, not by reading it.
-- Clean tear-down: the entire host is removed on click away, Escape press,
-  or hover-off.
+- Teardown: Escape, a click on the page, and hovering off all take the popup
+  down. The host element stays in the document and is only removed by
+  `destroy()`, when the extension is switched off — the earlier claim here that
+  "the entire host is removed on click away" was never true and never was what
+  the code did.
+- Dismissal is decided on `mouseup`, not on `click`, and in the same handler that
+  opens the popup. `click` fires *after* the mouse-up that opened the popup, so a
+  click-away listener closes the popup the opening gesture had just created, and
+  no selection-based lookup would ever survive. One release of the mouse is
+  either a request for a meaning or a click on the page, told apart by the same
+  `selection.js` rules the lookup uses — hence `resolveSelection()`, split out so
+  the question can be answered synchronously rather than after awaiting 19 MB of
+  dictionary. A forced dismissal also clears the pin, or the next hover popup
+  would inherit it and never close.
 - The popup is shown and hidden by toggling the `hidden` attribute, which needs
   an explicit `.decdi[hidden] { display: none }` rule in the injected
   stylesheet. The UA stylesheet's `[hidden]` rule is a *UA-origin* declaration,
