@@ -34,9 +34,11 @@ USER_AGENT = "devanagari-popup-dictionary/0.1 (dictionary build tool)"
 EXTENSIONS = {
     "babylon": ".babylon",
     "kaikki-jsonl": ".jsonl",
+    "kaikki-en-translations": ".jsonl",
     "tsv": ".tsv",
     "csv": ".csv",
     "json": ".json",
+    "stardict-dictd": ".tar.gz",
 }
 
 
@@ -45,8 +47,19 @@ def load_registry() -> list:
         return json.load(handle)["sources"]
 
 
+def cache_id(source: dict) -> str:
+    """Filesystem/manifest key for a source.
+
+    Several sources may point at one very large dump and differ only in the
+    target language they extract (the English Wiktextract file is 3.2 GB but
+    yields both en->hi and en->mr).  `sharedCache` lets them name a single
+    download instead of fetching the same bytes once per language.
+    """
+    return source.get("sharedCache") or source["id"]
+
+
 def cache_path(source: dict) -> str:
-    return os.path.join(CACHE_DIR, source["id"] + EXTENSIONS[source["format"]])
+    return os.path.join(CACHE_DIR, cache_id(source) + EXTENSIONS[source["format"]])
 
 
 def load_manifest() -> dict:
@@ -175,6 +188,18 @@ def main(argv: list | None = None) -> int:
         print("skipping non-redistributable sources "
               "(pass --allow-nonredistributable to fetch): %s" % ", ".join(skipped))
 
+    # Several sources can share one download; fetch each distinct file once.
+    deduped = []
+    seen_cache = set()
+    for source in selected:
+        key = cache_id(source)
+        if key in seen_cache:
+            print("%-16s shares the %s download" % (source["id"], key))
+            continue
+        seen_cache.add(key)
+        deduped.append(source)
+    selected = deduped
+
     if not selected:
         print("nothing to fetch")
         return 0
@@ -186,7 +211,8 @@ def main(argv: list | None = None) -> int:
 
     for source in selected:
         dst = cache_path(source)
-        previous = manifest["entries"].get(source["id"])
+        key = cache_id(source)
+        previous = manifest["entries"].get(key)
         if previous and not previous.get("partial") and os.path.exists(dst) and not args.force:
             print("%-16s cached (%s)" % (source["id"], human(previous["size"])))
             continue
@@ -198,7 +224,7 @@ def main(argv: list | None = None) -> int:
             print("    FAILED: %s" % exc, file=sys.stderr)
             failures.append(source["id"])
             continue
-        manifest["entries"][source["id"]] = {
+        manifest["entries"][key] = {
             "file": os.path.basename(dst),
             "url": source["url"],
             "size": size,

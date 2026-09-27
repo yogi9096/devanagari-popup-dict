@@ -2,18 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Devanagari Popup Dictionary</title>
-  <link rel="stylesheet" href="popup.css">
-</head>
-<body>
+    <title>English to Hindi</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
   <header class="head">
     <div class="title">
       <span class="glyph" aria-hidden="true">अ</span>
       <span>
-        <strong>Devanagari Dictionary</strong>
-        <small id="status-line">loading…</small>
+        <strong>English &rarr; Hindi</strong>
+        <small id="status-line">loading&hellip;</small>
       </span>
     </div>
+
     <label class="switch" title="Turn the dictionary on or off everywhere">
       <input type="checkbox" id="enabled" aria-label="Enabled">
       <span class="slider"></span>
@@ -28,19 +29,13 @@
   </section>
 
   <section class="section">
-    <h2>Languages</h2>
-    <label class="row"><input type="checkbox" id="lang-hi"> <span>Hindi <small id="count-hi"></small></span></label>
-    <label class="row"><input type="checkbox" id="lang-mr"> <span>Marathi <small id="count-mr"></small></span></label>
-    <p class="hint" id="pack-hint"></p>
-  </section>
-
-  <section class="section">
-    <h2>Trigger</h2>
+    <h2>Show the meaning when you</h2>
     <div class="segmented" role="group" aria-label="Trigger mode">
-      <button type="button" data-trigger="hover">Hover</button>
-      <button type="button" data-trigger="modifier">Shift + hover</button>
+      <button type="button" data-trigger="selection">Select a word</button>
+      <button type="button" data-trigger="hover">Hover a word</button>
+      <button type="button" data-trigger="both">Either</button>
     </div>
-    <p class="hint">Tip: press <kbd>Esc</kbd> to close a popup, click the pin to keep it open.</p>
+    <p class="hint">Tip: select a word and release the mouse &mdash; that is the whole trick. Right-click or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> also works. <kbd>Esc</kbd> closes a popup.</p>
   </section>
 
   <footer class="foot">

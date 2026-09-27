@@ -1,8 +1,13 @@
 /**
  * The lookup popup.
  *
- * Rendered inside a closed-ish shadow root on a single host element so page CSS
- * can never leak in and our CSS can never leak out (a real problem for injected
+ * Reads an English word and answers in Hindi, so the headword line is the Latin
+ * word the reader selected and the answer below it is the Devanagari
+ * translation, with its ISO 15919 pronunciation and the English sense that
+ * translation belongs to.
+ *
+ * Rendered inside a shadow root on a single host element so page CSS can never
+ * leak in and our CSS can never leak out (a real problem for injected
  * dictionaries on heavily styled sites).  Everything is built with DOM calls
  * and textContent - no innerHTML - so dictionary text can never inject markup.
  */
@@ -12,10 +17,12 @@
   const isNode = typeof module !== 'undefined' && module.exports;
   const posLabels = isNode ? require('./pos-labels') : (global.DecDi && global.DecDi.posLabels);
   const translit = isNode ? require('./translit') : (global.DecDi && global.DecDi.translit);
+  const devanagari = isNode ? require('./devanagari') : (global.DecDi && global.DecDi.devanagari);
 
   const HOST_ID = 'decdi-tooltip-host';
   const HIGHLIGHT_ID = 'decdi-highlight';
   const MAX_VISIBLE_GLOSS = 320;
+  const MAX_VISIBLE_SENSE = 140;
 
   const CSS = `
 :host { all: initial; }
@@ -43,6 +50,12 @@
   display: flex;
   flex-direction: column;
 }
+/* The UA stylesheet's [hidden] rule is a UA-origin declaration, so the
+   author-origin display:flex above beats it whatever the specificity.  Hiding
+   the popup therefore means setting the hidden attribute (hide()), and without
+   this rule that attribute hides nothing: Escape and the close button both set
+   it and left the popup on screen. */
+.decdi[hidden] { display: none; }
 .decdi[data-theme="dark"] {
   --decdi-bg: #17181c;
   --decdi-fg: #f3f4f6;
@@ -91,20 +104,22 @@
   padding: 1px 7px;
   white-space: nowrap;
 }
-.decdi-derived { font-size: .82em; color: var(--decdi-muted); margin-top: 2px; }
+.decdi-answer {
+  font-size: 1.3em;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-top: 3px;
+  word-break: break-word;
+}
+.decdi-answer-roman { color: var(--decdi-muted); font-style: italic; font-weight: 400; font-size: .74em; margin-inline-start: 8px; }
+.decdi-answer-sep { color: var(--decdi-muted); }
+.decdi-sense { font-size: .88em; color: var(--decdi-muted); margin-top: 2px; }
 .decdi-gloss { margin-top: 3px; white-space: pre-wrap; word-break: break-word; }
+.decdi-lang { font-size: .74em; color: var(--decdi-muted); margin-inline-start: 6px; }
+.decdi-derived { font-size: .82em; color: var(--decdi-muted); margin-top: 2px; }
 .decdi-gloss ol { margin: 0; padding-inline-start: 1.3em; }
 .decdi-gloss li { margin: 0; }
 .decdi-src { font-size: .78em; color: var(--decdi-muted); margin-top: 4px; }
-.decdi-context {
-  margin: 0 0 8px;
-  padding: 6px 8px;
-  border-inline-start: 3px solid var(--decdi-accent);
-  background: var(--decdi-chip);
-  border-radius: 4px;
-  font-size: .95em;
-}
-.decdi-context mark { background: transparent; color: var(--decdi-accent); font-weight: 700; }
 .decdi-empty { padding: 6px 12px 12px; }
 .decdi-empty p { margin: 0 0 6px; }
 .decdi-suggest { list-style: none; margin: 0; padding: 0; }
@@ -188,6 +203,66 @@
     return (boundary > limit * 0.5 ? cut.slice(0, boundary + 1) : cut).trim() + ' \u2026';
   }
 
+  /**
+   * Pronunciation for one entry.
+   *
+   * The headword is English, so romanising it would be meaningless; what the
+   * reader needs is how to *say* the answer, so we romanise the Devanagari
+   * translation.  Wiktionary already supplies ISO 15919 in the pack's `roman`
+   * column, which we prefer over deriving it.
+   */
+  function pronunciationFor(match, scheme) {
+    if (match.roman) {
+      return match.roman;
+    }
+    const answer = devanagari.firstDevanagariToken(match.gloss || '');
+    if (answer) {
+      return translit.romanize(answer, scheme);
+    }
+    return '';
+  }
+
+  /**
+   * What to speak for one entry: the translation when there is one, otherwise
+   * the English headword.  Returns '' when there is nothing to say.
+   */
+  function speechTextFor(match) {
+    const answer = devanagari.firstDevanagariToken(match.gloss || '');
+    return answer || match.headword || '';
+  }
+
+  /**
+   * The BCP-47 tag the answer should be spoken in, taken from the pack rather
+   * than hard-coded, so a pack answering in another language would be spoken in
+   * that language without a change here.
+   */
+  const SPEECH_LANGS = { hi: 'hi-IN', mr: 'mr-IN', en: 'en-IN' };
+
+  function speechLangFor(match) {
+    const code = (match.pack && match.pack.targetLang) || '';
+    return SPEECH_LANGS[code] || SPEECH_LANGS.hi;
+  }
+
+  /**
+   * True when a keystroke belongs to whatever the reader is typing rather than
+   * to us.  The popup is often open over a search box or a comment field, and a
+   * dictionary that swallows the letter "a" there is worse than one with no
+   * shortcuts at all.
+   */
+  function isEditableTarget(node) {
+    if (!node || node.nodeType !== 1) {
+      return false;
+    }
+    if (node.isContentEditable) {
+      return true;
+    }
+    const tag = node.tagName ? node.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+      return true;
+    }
+    return typeof node.closest === 'function' && Boolean(node.closest('[contenteditable]'));
+  }
+
   class Tooltip {
     constructor(options) {
       const config = options || {};
@@ -204,6 +279,93 @@
       this.visible = false;
       this.result = null;
       this.highlight = null;
+      this.keyHandler = null;
+    }
+
+    /* ----------------------------------------------------------------- *
+     * Keyboard: A speaks, C copies, Shift pins, Escape closes.
+     * ----------------------------------------------------------------- */
+
+    /**
+     * Speak the answer, in the language the pack answers in.
+     * @returns {boolean} whether anything was spoken
+     */
+    speakCurrent() {
+      if (!this.onRequestSpeak || !this.result) {
+        return false;
+      }
+      const match = this.result.matches[0];
+      this.onRequestSpeak(
+        match ? speechTextFor(match) : this.result.query,
+        match ? speechLangFor(match) : null,
+      );
+      return true;
+    }
+
+    /** Copy the whole entry. @returns {boolean} whether anything was copied */
+    copyCurrent() {
+      if (!this.onRequestCopy || !this.result) {
+        return false;
+      }
+      this.onRequestCopy(this.result);
+      return true;
+    }
+
+    /** Freeze the popup open, or let it follow the pointer again. */
+    togglePin() {
+      this.pinned = !this.pinned;
+      const pin = this.root ? this.root.querySelector('.decdi-pin') : null;
+      if (pin) {
+        pin.setAttribute('aria-pressed', this.pinned ? 'true' : 'false');
+      }
+      return this.pinned;
+    }
+
+    handleKey(event) {
+      if (!this.visible || !this.result) {
+        return;
+      }
+      // A modified keystroke belongs to the browser or the page, not to us.
+      if (event.ctrlKey || event.altKey || event.metaKey) {
+        return;
+      }
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+      let handled = true;
+      if (event.key === 'Shift') {
+        this.togglePin();
+      } else {
+        const key = String(event.key || '').toLowerCase();
+        if (key === 'a') {
+          handled = this.speakCurrent();
+        } else if (key === 'c') {
+          handled = this.copyCurrent();
+        } else {
+          handled = false;
+        }
+      }
+      if (handled) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+
+    ensureKeyHandler() {
+      if (this.keyHandler || !this.document) {
+        return;
+      }
+      this.keyHandler = (event) => this.handleKey(event);
+      // Capture, so the shortcut still works when focus sits on a page button
+      // rather than on ours.
+      this.document.addEventListener('keydown', this.keyHandler, true);
+    }
+
+    removeKeyHandler() {
+      if (this.keyHandler && this.document) {
+        this.document.removeEventListener('keydown', this.keyHandler, true);
+        this.keyHandler = null;
+      }
     }
 
     ensureHost() {
@@ -267,9 +429,6 @@
 
       root.appendChild(this.buildHead(result));
       const body = element(doc, 'div', 'decdi-body');
-      if (settings.showContext && config.context) {
-        body.appendChild(this.buildContext(config.context));
-      }
       if (result.missing) {
         body.appendChild(this.buildEmpty(result));
       } else {
@@ -291,13 +450,6 @@
       const first = result.matches.length ? result.matches[0] : null;
       const term = first ? first.headword : result.query;
       words.appendChild(element(doc, 'span', 'decdi-headword', term));
-      if (settings.showRomanization) {
-        const roman = (first && first.roman)
-          || translit.romanize(term, settings.romanizationScheme);
-        if (roman) {
-          words.appendChild(element(doc, 'span', 'decdi-roman', roman));
-        }
-      }
       head.appendChild(words);
 
       const actions = element(doc, 'div', 'decdi-actions');
@@ -309,7 +461,7 @@
         speak.setAttribute('aria-label', 'Pronounce ' + term);
         speak.addEventListener('click', (event) => {
           event.preventDefault();
-          this.onRequestSpeak(term, result.languages);
+          this.speakCurrent();
         });
         actions.appendChild(speak);
       }
@@ -320,22 +472,19 @@
       copy.setAttribute('aria-label', 'Copy entry');
       copy.addEventListener('click', (event) => {
         event.preventDefault();
-        if (this.onRequestCopy) {
-          this.onRequestCopy(result);
-        }
+        this.copyCurrent();
       });
       actions.appendChild(copy);
 
-      const pin = element(doc, 'button', 'decdi-btn', '\uD83D\uDCCC');
+      const pin = element(doc, 'button', 'decdi-btn decdi-pin', '\uD83D\uDCCC');
       pin.type = 'button';
-      pin.title = 'Keep this open';
+      pin.title = 'Keep this open (Shift)';
       pin.setAttribute('aria-label', 'Keep this open');
       pin.setAttribute('aria-pressed', this.pinned ? 'true' : 'false');
       pin.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
-        this.pinned = !this.pinned;
-        pin.setAttribute('aria-pressed', this.pinned ? 'true' : 'false');
+        this.togglePin();
       });
       actions.appendChild(pin);
 
@@ -356,53 +505,63 @@
       return head;
     }
 
-    buildContext(context) {
-      const doc = this.document;
-      const wrapper = element(doc, 'p', 'decdi-context');
-      const before = context.text.slice(0, context.before);
-      const word = context.text.slice(context.before, context.after);
-      const after = context.text.slice(context.after);
-      wrapper.appendChild(doc.createTextNode(before));
-      wrapper.appendChild(element(doc, 'mark', null, word));
-      wrapper.appendChild(doc.createTextNode(after));
-      return wrapper;
-    }
-
     buildMatch(match, result) {
       const doc = this.document;
       const wrapper = element(doc, 'div', 'decdi-match');
 
+      // The English word and its part of speech.
       const head = element(doc, 'div', 'decdi-match-head');
       head.appendChild(element(doc, 'span', 'decdi-term', match.headword));
       const posText = posLabels.label(match.pos);
       if (posText) {
         head.appendChild(element(doc, 'span', 'decdi-chip', posText));
       }
-      if (this.settings.showRomanization) {
-        const roman = match.roman
-          || translit.romanize(match.headword, this.settings.romanizationScheme);
-        if (roman) {
-          head.appendChild(element(doc, 'span', 'decdi-roman', roman));
-        }
-      }
       wrapper.appendChild(head);
 
       if (match.derivedFrom) {
         wrapper.appendChild(element(doc, 'div', 'decdi-derived',
-          result.query + ' \u2192 ' + match.headword
+          match.derivedFrom + ' \u2192 ' + match.headword
           + (match.derivedLabel ? ' \u00B7 ' + match.derivedLabel : '')));
       }
 
-      const gloss = element(doc, 'div', 'decdi-gloss');
-      const senses = splitSenses(truncate(match.gloss, MAX_VISIBLE_GLOSS));
+      // The answer itself.  Raghuvira rows pack several equivalent renderings
+      // into one semicolon-separated field, so it is split back out into a list
+      // rather than shown as one run-on string.  The English sense the answer
+      // came from is rendered separately below, because "what it means in
+      // English" is usually the part a learner needs.
+      const answerText = match.gloss || '';
+      const senses = splitSenses(truncate(answerText, MAX_VISIBLE_GLOSS));
+      const answer = element(doc, 'div', 'decdi-answer');
       if (senses.length > 1) {
-        const list = element(doc, 'ol');
-        senses.forEach((sense) => list.appendChild(element(doc, 'li', null, sense)));
-        gloss.appendChild(list);
+        senses.forEach((sense, index) => {
+          if (index > 0) {
+            answer.appendChild(element(doc, 'span', 'decdi-answer-sep', '; '));
+          }
+          answer.appendChild(doc.createTextNode(sense));
+        });
       } else {
-        gloss.textContent = senses[0] || match.gloss;
+        answer.textContent = senses[0] || answerText;
       }
-      wrapper.appendChild(gloss);
+      if (this.settings.showRomanization) {
+        const roman = pronunciationFor(match, this.settings.romanizationScheme);
+        if (roman) {
+          answer.appendChild(element(doc, 'span', 'decdi-answer-roman', roman));
+        }
+      }
+      wrapper.appendChild(answer);
+
+      if (match.sense) {
+        // What `sense` holds depends on the pack.  Raghu Vira and Wiktionary
+        // carry the English definition the translation answers; a pack with no
+        // per-sense definition stores an example sentence instead, and the pack
+        // declares that with the `with-examples` flag.  The line is labelled
+        // rather than passed off as a definition.
+        const isExample = Array.isArray(match.pack.flags)
+          && match.pack.flags.indexOf('with-examples') >= 0;
+        wrapper.appendChild(element(doc, 'div', 'decdi-sense',
+          (isExample ? 'e.g. ' : '')
+          + truncate(match.sense, MAX_VISIBLE_SENSE)));
+      }
 
       if (this.settings.showSource) {
         wrapper.appendChild(element(doc, 'div', 'decdi-src', match.pack.name));
@@ -428,7 +587,7 @@
       const doc = this.document;
       const wrapper = element(doc, 'div', 'decdi-empty');
       wrapper.appendChild(element(doc, 'p', null,
-        '\u201C' + result.query + '\u201D is not in the enabled dictionaries.'));
+        'No entry for \u201C' + result.query + '\u201D in the installed dictionaries.'));
       if (result.suggestions && result.suggestions.length) {
         wrapper.appendChild(element(doc, 'p', null, 'Did you mean:'));
         const list = element(doc, 'ul', 'decdi-suggest');
@@ -488,6 +647,7 @@
       }
       this.root.hidden = false;
       this.visible = true;
+      this.ensureKeyHandler();
       this.position(rect);
     }
 
@@ -500,12 +660,14 @@
       }
       this.root.hidden = true;
       this.visible = false;
+      this.removeKeyHandler();
       this.hideHighlight();
     }
 
     /** Remove the popup entirely (used when the extension is switched off). */
     destroy() {
       this.hideHighlight();
+      this.removeKeyHandler();
       if (this.host && this.host.parentNode) {
         this.host.parentNode.removeChild(this.host);
       }
@@ -565,7 +727,13 @@
     splitSenses,
     truncate,
     resolveTheme,
+    isEditableTarget,
+    pronunciationFor,
+    speechTextFor,
+    speechLangFor,
+    CSS,
     MAX_VISIBLE_GLOSS,
+    MAX_VISIBLE_SENSE,
   };
 
   global.DecDi = Object.assign(global.DecDi || {}, { tooltip: namespace });

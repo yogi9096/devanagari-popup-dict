@@ -1,69 +1,73 @@
 {
-  "$comment": "Registry of dictionary sources consumed by tools/fetch_sources.py and tools/build_dict.py. 'redistribute': false means the licence does not allow shipping the derived pack in a published extension; the fetch script refuses those unless --allow-nonredistributable is passed.",
+  "$comment": "Registry of dictionary sources consumed by tools/fetch_sources.py and tools/build_dict.py. 'redistribute': false means the licence does not allow shipping the derived pack in a published extension; the fetch script refuses those unless --allow-nonredistributable is passed. 'sharedCache' names one download that several sources read. LICENCE NOTE: en-freedict-anusaaraka is GPL-2.0-or-later, and the source itself requires that the resulting work carry the same licence, so the pack built from it is GPL too and is declared as such in its 'license' field, in THIRD_PARTY_NOTICES.md and in the popup footer. The extension's own source stays MIT: the pack is a separate data file, not a derivative of the code.",
+  "$directions": "The extension is English -> HINDI ONLY, so the packs that matter are sourceLang:'en' AND targetLang:'hi'. Every other entry is kept registered so a pack can be rebuilt without re-authoring the registry, but they are DORMANT: the runtime only accepts an answer language of 'hi' (see settings.js LANGUAGES) and dictionary.js filters packs on it, so no pack with a different targetLang can ever be selected. Marathi sources were removed outright rather than left dormant, because shipping a language the product no longer offers is a licensing and support liability. Do not run 'build_dict.py --all' and then package without checking the catalogue: anything the catalogue lists is shipped.",
   "sources": [
     {
-      "id": "mr-berntsen",
-      "name": "Berntsen's Marathi-English Dictionary",
-      "description": "Concise modern Marathi-English dictionary with part-of-speech labels.",
-      "sourceLang": "mr",
-      "targetLang": "en",
-      "format": "babylon",
-      "url": "https://raw.githubusercontent.com/indic-dict/stardict-marathi/master/ma-head/other-entries/berntsen/berntsen.babylon",
-      "homepage": "https://github.com/indic-dict/stardict-marathi",
-      "license": "Public domain",
-      "licenseUrl": "https://en.wikipedia.org/wiki/Public_domain",
-      "attribution": "A. M. Berntsen, Marathi-English Dictionary (1920). Digitised and converted by the indic-dict project.",
+      "id": "en-freedict-anusaaraka",
+      "name": "Anusaaraka English-Hindi Dictionary (FreeDict)",
+      "description": "General-purpose English to Hindi dictionary of ~22,000 everyday headwords with a part of speech and an English example sentence for each. The main English-Hindi pack: unlike Wiktionary's translation tables it covers ordinary verbs.",
+      "sourceLang": "en",
+      "targetLang": "hi",
+      "format": "stardict-dictd",
+      "url": "https://raw.githubusercontent.com/indic-dict/stardict-hindi/master/en-head/tars/stardict-freedict2-eng-hin.tar.gz",
+      "homepage": "https://github.com/freedict/fd-dictionaries/tree/master/eng-hin",
+      "license": "GNU General Public License v2.0 or later",
+      "licenseUrl": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
+      "attribution": "Anusaaraka English-Hindi Dictionary V2.0 by the Language Technologies Research Centre, IIIT Hyderabad (funded by Satyam Computers), carried and cleaned up by the FreeDict project. The pack is a derived work and is distributed under the same GPL terms.",
       "redistribute": true,
       "default": true,
-      "options": { "stripHeadwordPrefix": true, "flags": ["secondary"] }
+      "options": {
+        "maxSenses": 6,
+        "maxExamples": 1,
+        "maxGlossChars": 300,
+        "flags": [
+          "everyday-vocabulary",
+          "with-examples"
+        ]
+      }
     },
     {
-      "id": "mr-vaze",
-      "name": "Vaze's Marathi-English Dictionary",
-      "description": "Compact early-20th-century Marathi-English dictionary.",
-      "sourceLang": "mr",
-      "targetLang": "en",
-      "format": "babylon",
-      "url": "https://raw.githubusercontent.com/indic-dict/stardict-marathi/master/ma-head/other-entries/vaze/vaze.babylon",
-      "homepage": "https://github.com/indic-dict/stardict-marathi",
-      "license": "Public domain",
-      "licenseUrl": "https://en.wikipedia.org/wiki/Public_domain",
-      "attribution": "Vaze, Marathi-English Dictionary (1911). Digitised and converted by the indic-dict project.",
+      "id": "en-wiktionary-hi",
+      "name": "Wiktionary English to Hindi",
+      "description": "Hindi translations attached to English Wiktionary entries, with the English sense that each translation belongs to. The main English-Hindi pack.",
+      "sourceLang": "en",
+      "targetLang": "hi",
+      "format": "kaikki-en-translations",
+      "url": "https://kaikki.org/dictionary/English/kaikki.org-dictionary-English.jsonl",
+      "sharedCache": "en-wiktionary",
+      "homepage": "https://kaikki.org/dictionary/English/",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "attribution": "Wiktionary contributors, via Wiktextract (Tatu Ylonen) / kaikki.org. English Wiktionary text is CC BY-SA 4.0 / GFDL.",
       "redistribute": true,
       "default": true,
-      "options": { "stripHeadwordPrefix": true, "flags": ["secondary"] }
+      "options": {
+        "langCode": "hi",
+        "maxSenses": 6
+      }
     },
     {
-      "id": "mr-molesworth",
-      "name": "Molesworth's Marathi-English Dictionary",
-      "description": "The classic exhaustive Marathi-English dictionary (long, scholarly entries).",
-      "sourceLang": "mr",
-      "targetLang": "en",
+      "id": "en-raghuvira",
+      "name": "Raghu Vira's English-Hindi Dictionary of Government and Educational Words",
+      "description": "English to Hindi dictionary of administrative, scientific and educational terminology.",
+      "sourceLang": "en",
+      "targetLang": "hi",
       "format": "babylon",
-      "url": "https://raw.githubusercontent.com/indic-dict/stardict-marathi/master/ma-head/other-entries/molesworth/molesworth.babylon",
-      "homepage": "https://github.com/indic-dict/stardict-marathi",
-      "license": "Public domain",
+      "url": "https://raw.githubusercontent.com/indic-dict/stardict-hindi/master/en-head/raghuvIra_gov_ed/raghuvIra_gov_ed.babylon",
+      "homepage": "https://github.com/indic-dict/stardict-hindi",
+      "license": "Government of India publication - public domain",
       "licenseUrl": "https://en.wikipedia.org/wiki/Public_domain",
-      "attribution": "J. T. Molesworth, A Dictionary of Marathi and English (1831/1857). Digitised and converted by the indic-dict project.",
-      "redistribute": true,
-      "default": false,
-      "options": { "stripHeadwordPrefix": true, "splitCommaTerms": true, "maxGlossChars": 900, "flags": ["archaic", "verbose"] }
-    },
-    {
-      "id": "mr-wiktionary",
-      "name": "Wiktionary Marathi (English glosses)",
-      "description": "Machine-readable extract of English Wiktionary's Marathi entries.",
-      "sourceLang": "mr",
-      "targetLang": "en",
-      "format": "kaikki-jsonl",
-      "url": "https://kaikki.org/dictionary/Marathi/kaikki.org-dictionary-Marathi.jsonl",
-      "homepage": "https://kaikki.org/dictionary/Marathi/",
-      "license": "CC BY-SA 3.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
-      "attribution": "Wiktionary contributors, via Wiktextract (Tatu Ylonen) / kaikki.org.",
+      "attribution": "Dr. Raghu Vira, A Comprehensive English-Hindi Dictionary of Government and Educational Words and Phrases.",
       "redistribute": true,
       "default": true,
-      "options": { "langCode": "mr", "maxSenses": 5 }
+      "options": {
+        "stripHeadwordPrefix": true,
+        "englishHead": true,
+        "maxGlossChars": 300,
+        "flags": [
+          "terminology"
+        ]
+      }
     },
     {
       "id": "hi-wiktionary",
@@ -78,8 +82,14 @@
       "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
       "attribution": "Wiktionary contributors, via Wiktextract (Tatu Ylonen) / kaikki.org.",
       "redistribute": true,
-      "default": true,
-      "options": { "langCode": "hi", "maxSenses": 5 }
+      "default": false,
+      "options": {
+        "langCode": "hi",
+        "maxSenses": 5,
+        "flags": [
+          "reverse-direction"
+        ]
+      }
     },
     {
       "id": "hi-shabdasagar",
@@ -95,7 +105,13 @@
       "attribution": "Shyamsundar Das, Hindi Shabdasagar (1916-1929). Digitised and converted by the indic-dict project.",
       "redistribute": true,
       "default": false,
-      "options": { "maxGlossChars": 700, "flags": ["monolingual", "verbose"] }
+      "options": {
+        "maxGlossChars": 700,
+        "flags": [
+          "monolingual",
+          "verbose"
+        ]
+      }
     },
     {
       "id": "hi-bahri",
@@ -111,7 +127,14 @@
       "attribution": "Hardev Bahri, Rajpal Advanced Learner's Hindi-English Dictionary (Rajpal & Sons).",
       "redistribute": false,
       "default": false,
-      "options": { "stripHeadwordPrefix": true, "romanFromDefinition": true, "maxGlossChars": 1200, "flags": ["non-redistributable"] }
+      "options": {
+        "stripHeadwordPrefix": true,
+        "romanFromDefinition": true,
+        "maxGlossChars": 1200,
+        "flags": [
+          "non-redistributable"
+        ]
+      }
     },
     {
       "id": "hi-caturvedi",
@@ -127,23 +150,14 @@
       "attribution": "Mahendra Chaturvedi & Bhola Nath Tiwari, A Practical Hindi-English Dictionary (National Publishing House, 1970).",
       "redistribute": false,
       "default": false,
-      "options": { "stripHeadwordPrefix": true, "romanFromDefinition": true, "maxGlossChars": 900, "flags": ["non-redistributable"] }
-    },
-    {
-      "id": "en-raghuvira",
-      "name": "Raghu Vira's English-Hindi Dictionary of Government and Educational Words",
-      "description": "English to Hindi dictionary of administrative, scientific and educational terminology.",
-      "sourceLang": "en",
-      "targetLang": "hi",
-      "format": "babylon",
-      "url": "https://raw.githubusercontent.com/indic-dict/stardict-hindi/master/en-head/raghuvIra_gov_ed/raghuvIra_gov_ed.babylon",
-      "homepage": "https://github.com/indic-dict/stardict-hindi",
-      "license": "Government of India publication - public domain",
-      "licenseUrl": "https://en.wikipedia.org/wiki/Public_domain",
-      "attribution": "Dr. Raghu Vira, A Comprehensive English-Hindi Dictionary of Government and Educational Words and Phrases.",
-      "redistribute": true,
-      "default": false,
-      "options": { "stripHeadwordPrefix": true, "flags": ["reverse-direction"] }
+      "options": {
+        "stripHeadwordPrefix": true,
+        "romanFromDefinition": true,
+        "maxGlossChars": 900,
+        "flags": [
+          "non-redistributable"
+        ]
+      }
     }
   ]
 }

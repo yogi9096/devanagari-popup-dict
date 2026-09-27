@@ -35,6 +35,11 @@ function walk(dir, out) {
 
 function checkSyntax() {
   const files = walk(SRC, []);
+  // The test files are part of what "npm run check" is trusted to have verified.
+  // They are only loaded by `npm test`, so a syntax error in one is otherwise
+  // invisible until the test run - and a test run that fails to parse reports it
+  // as a single opaque failure.
+  files.push(...walk(path.join(ROOT, 'test'), []));
   files.push(path.join(__dirname, 'check-js.js'));
   for (const file of files) {
     const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
@@ -146,11 +151,88 @@ function checkHtmlScripts() {
   }
 }
 
+/**
+ * Every id the options page binds must correspond to a real settings key, and
+ * vice versa.  Removing a setting without updating the form is silent at
+ * runtime - the checkbox just stops being read - so it is checked statically.
+ */
+function checkOptionsBindings() {
+  const htmlPath = path.join(SRC, 'options', 'options.html');
+  const jsPath = path.join(SRC, 'options', 'options.js');
+  if (!fs.existsSync(htmlPath) || !fs.existsSync(jsPath)) {
+    return;
+  }
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const js = fs.readFileSync(jsPath, 'utf8');
+
+  // The settings keys the form writes, e.g. ({ maxMatches: v })
+  const written = new Set();
+  for (const match of js.matchAll(/\(\{ *([a-zA-Z]+):/g)) {
+    written.add(match[1]);
+  }
+  // Keys assigned from a whole object, e.g. ({ packs })
+  const writtenAny = written.size > 0;
+
+  for (const match of js.matchAll(/bindOnce\('([a-z-]+)'/g)) {
+    const id = match[1];
+    if (!new RegExp('id="' + id + '"').test(html)) {
+      problems.push('options.js binds "' + id + '" but options.html has no such element');
+    }
+  }
+  for (const match of html.matchAll(/<[^>]*\bid="([a-z-]+)"/g)) {
+    const id = match[1];
+    // Section headings are referenced by aria-labelledby, not by script.
+    if (/^h-/.test(id) || new RegExp("'" + id + "'").test(js)) {
+      continue;
+    }
+    problems.push('options.html has #' + id + ' but options.js never reads it');
+  }
+  if (!writtenAny) {
+    problems.push('options.js: no settings keys detected - the binding regex may have drifted');
+  }
+  return written;
+}
+
+/**
+ * The content script must load every module it uses.  A `DecDi.x` reference to a
+ * module that is not in the manifest's script list is a TypeError on the first
+ * event that reaches it, which in practice means "the extension does nothing".
+ */
+function checkContentScriptDependencies() {
+  const manifest = resolveManifest();
+  const block = ((manifest && manifest.content_scripts) || [])[0];
+  if (!block || !block.js) {
+    return;
+  }
+  const loaded = new Set(block.js);
+  for (const file of block.js) {
+    const full = path.join(SRC, file);
+    if (!fs.existsSync(full)) {
+      continue;
+    }
+    const source = fs.readFileSync(full, 'utf8');
+    for (const match of source.matchAll(/\bDecDi\.([a-zA-Z]+)\b/g)) {
+      const namespace = match[1];
+      const provides = path.join(SRC, 'common', namespace + '.js');
+      if (!fs.existsSync(provides)) {
+        continue; // a real DOM global, not one of our modules
+      }
+      const relative = 'common/' + namespace + '.js';
+      if (!loaded.has(relative)) {
+        problems.push('src/' + file + ' uses DecDi.' + namespace
+          + ' but the manifest does not load ' + relative);
+      }
+    }
+  }
+}
+
 function main() {
   const count = checkSyntax();
   const manifest = resolveManifest();
   checkManifest(manifest);
   checkHtmlScripts();
+  checkOptionsBindings();
+  checkContentScriptDependencies();
 
   console.log('checked %d JavaScript files', count);
   if (problems.length) {

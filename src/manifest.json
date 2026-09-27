@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Devanagari Popup Dictionary \u2014 Hindi & Marathi",
-  "short_name": "Devanagari Dict",
-  "version": "0.1.0",
-  "description": "Hover over any Hindi or Marathi word to see its pronunciation, part of speech and English meaning. Works offline, no tracking.",
+  "name": "English to Hindi Popup Dictionary",
+  "short_name": "Hindi Dict",
+  "version": "0.3.0",
+  "description": "Select an English word to see its Hindi meaning, pronunciation and part of speech. Works offline, no tracking.",
   "author": "Devanagari Popup Dictionary contributors",
   "homepage_url": "https://github.com/yogi9096/devanagari-popup-dict",
 
@@ -27,7 +27,11 @@
   ],
 
   "background": {
-    "scripts": ["background/background.js"]
+    "scripts": [
+      "common/compat.js",
+      "common/settings.js",
+      "background/background.js"
+    ]
   },
 
   "content_scripts": [
@@ -40,6 +44,7 @@
         "common/translit.js",
         "common/pos-labels.js",
         "common/morphology.js",
+        "common/selection.js",
         "common/settings.js",
         "common/dictionary.js",
         "common/tooltip.js",
@@ -73,7 +78,7 @@
     },
     "lookup-selection": {
       "suggested_key": { "default": "Alt+Shift+L" },
-      "description": "Look up the selected text"
+      "description": "Look up the selected word"
     }
   },
 

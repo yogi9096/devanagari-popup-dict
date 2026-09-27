@@ -18,28 +18,51 @@
     flag.timer = window.setTimeout(() => { saveState.textContent = ''; }, 4000);
   }
 
-  function bindCheckbox(id, get, set) {
-    const node = byId(id);
-    node.checked = get();
-    node.addEventListener('change', () => save(set(node.checked)));
-  }
+  const LANGUAGES = { hi: 'Hindi', en: 'English' };
 
-  function bindNumber(id, get, set) {
+  /*
+   * Binding is separated from filling in values.  render() runs after every
+   * save, so binding inside it would attach a fresh listener on every change
+   * and each toggle would then be handled N times over.
+   */
+  function bindOnce(id, apply, assign) {
     const node = byId(id);
-    node.value = get();
+    if (!node || node.dataset.bound === '1') {
+      return node;
+    }
+    node.dataset.bound = '1';
     node.addEventListener('change', () => {
-      const value = Number(node.value);
-      if (Number.isFinite(value)) {
-        save(set(value));
+      let value;
+      if (node.type === 'checkbox') {
+        value = node.checked;
+      } else if (node.type === 'number') {
+        value = Number(node.value);
+        if (!Number.isFinite(value)) {
+          return;
+        }
+      } else {
+        value = node.value;
       }
+      save(assign(value));
     });
+    apply(node);
+    return node;
   }
 
-  function bindSelect(id, get, set) {
-    const node = byId(id);
-    node.value = get();
-    node.addEventListener('change', () => save(set(node.value)));
-  }
+  const fill = {
+    check(id, value) {
+      const node = byId(id);
+      if (node) {
+        node.checked = Boolean(value);
+      }
+    },
+    value(id, value) {
+      const node = byId(id);
+      if (node) {
+        node.value = value;
+      }
+    },
+  };
 
   async function save(patch) {
     settings = await settingsModule.save(Object.assign({}, settings, patch));
@@ -62,7 +85,9 @@
       host.textContent = 'No packs found. Build them with: python tools/build_dict.py --defaults';
       return;
     }
-    const counts = { hi: 0, mr: 0 };
+    // Counted by the language the answer is written in, so the number beside
+    // the pack list is the Hindi coverage the reader actually gets.
+    let words = 0;
     catalog.packs.forEach((pack) => {
       const box = document.createElement('div');
       box.className = 'pack';
@@ -84,55 +109,92 @@
       head.appendChild(name);
       box.appendChild(head);
 
+      const from = LANGUAGES[pack.sourceLang] || pack.sourceLang;
+      const to = LANGUAGES[pack.targetLang] || pack.targetLang;
       const meta = document.createElement('p');
       meta.className = 'pack-meta';
       meta.textContent = (pack.count || 0).toLocaleString('en-US')
-        + ' entries · ' + (pack.sourceLang === 'hi' ? 'Hindi' : pack.sourceLang === 'mr' ? 'Marathi' : pack.sourceLang)
-        + ' → ' + pack.targetLang + ' · ' + pack.license + '. ' + (pack.attribution || '');
+        + ' words · ' + from + ' → ' + to + ' · ' + pack.license
+        + (pack.attribution ? '. ' + pack.attribution : '');
       box.appendChild(meta);
 
-      if (packEnabled(pack) && counts[pack.sourceLang] !== undefined) {
-        counts[pack.sourceLang] += pack.count || 0;
+      if (packEnabled(pack) && pack.targetLang === 'hi') {
+        words += pack.count || 0;
       }
       host.appendChild(box);
     });
-    const hi = byId('count-hi');
-    const mr = byId('count-mr');
-    if (hi) hi.textContent = counts.hi ? '(' + counts.hi.toLocaleString('en-US') + ' words)' : '';
-    if (mr) mr.textContent = counts.mr ? '(' + counts.mr.toLocaleString('en-US') + ' words)' : '';
+    const total = byId('pack-total');
+    if (total) {
+      total.textContent = words
+        ? words.toLocaleString('en-US') + ' Hindi meanings loaded'
+        : 'No Hindi pack enabled';
+    }
   }
 
-  function render() {
-    bindCheckbox('enabled', () => settings.enabled !== false, (v) => ({ enabled: v }));
-    bindCheckbox('lang-hi', () => settings.languages.hi, (v) => ({
-      languages: Object.assign({}, settings.languages, { hi: v }),
-    }));
-    bindCheckbox('lang-mr', () => settings.languages.mr, (v) => ({
-      languages: Object.assign({}, settings.languages, { mr: v }),
-    }));
-    bindSelect('primary', () => settings.primaryLanguage, (v) => ({ primaryLanguage: v }));
-    bindSelect('trigger', () => settings.trigger, (v) => ({ trigger: v }));
-    bindSelect('modifier', () => settings.modifier, (v) => ({ modifier: v }));
-    bindNumber('hover-delay', () => settings.hoverDelay, (v) => ({ hoverDelay: v }));
-    bindNumber('hide-delay', () => settings.hideDelay, (v) => ({ hideDelay: v }));
-    bindCheckbox('allow-frames', () => settings.allowFrames === true, (v) => ({ allowFrames: v }));
-    bindCheckbox('show-romanization', () => settings.showRomanization !== false,
+  /** Attach the listeners.  Runs once; safe to call again. */
+  function bind() {
+    bindOnce('enabled', (n) => { n.checked = settings.enabled !== false; },
+      (v) => ({ enabled: v }));
+    bindOnce('trigger', () => { fill.value('trigger', settings.trigger); },
+      (v) => ({ trigger: v }));
+    bindOnce('modifier', () => { fill.value('modifier', settings.modifier); },
+      (v) => ({ modifier: v }));
+    bindOnce('hover-delay', () => { fill.value('hover-delay', settings.hoverDelay); },
+      (v) => ({ hoverDelay: v }));
+    bindOnce('hide-delay', () => { fill.value('hide-delay', settings.hideDelay); },
+      (v) => ({ hideDelay: v }));
+    bindOnce('max-selection-words', () => { fill.value('max-selection-words', settings.maxSelectionWords); },
+      (v) => ({ maxSelectionWords: v }));
+    bindOnce('max-selection-chars', () => { fill.value('max-selection-chars', settings.maxSelectionChars); },
+      (v) => ({ maxSelectionChars: v }));
+    bindOnce('allow-frames', () => { fill.check('allow-frames', settings.allowFrames === true); },
+      (v) => ({ allowFrames: v }));
+    bindOnce('show-romanization', () => { fill.check('show-romanization', settings.showRomanization !== false); },
       (v) => ({ showRomanization: v }));
-    bindSelect('scheme', () => settings.romanizationScheme, (v) => ({ romanizationScheme: v }));
-    bindCheckbox('show-derived', () => settings.showDerived !== false, (v) => ({ showDerived: v }));
-    bindCheckbox('show-context', () => settings.showContext === true, (v) => ({ showContext: v }));
-    bindCheckbox('show-tts', () => settings.showTts !== false, (v) => ({ showTts: v }));
-    bindCheckbox('show-source', () => settings.showSource !== false, (v) => ({ showSource: v }));
-    bindNumber('max-matches', () => settings.maxMatches, (v) => ({ maxMatches: v }));
-    bindSelect('theme', () => settings.theme, (v) => ({ theme: v }));
-    bindNumber('font-size', () => settings.fontSize, (v) => ({ fontSize: v }));
+    bindOnce('scheme', () => { fill.value('scheme', settings.romanizationScheme); },
+      (v) => ({ romanizationScheme: v }));
+    bindOnce('show-derived', () => { fill.check('show-derived', settings.showDerived !== false); },
+      (v) => ({ showDerived: v }));
+    bindOnce('show-tts', () => { fill.check('show-tts', settings.showTts !== false); },
+      (v) => ({ showTts: v }));
+    bindOnce('show-source', () => { fill.check('show-source', settings.showSource !== false); },
+      (v) => ({ showSource: v }));
+    bindOnce('max-matches', () => { fill.value('max-matches', settings.maxMatches); },
+      (v) => ({ maxMatches: v }));
+    bindOnce('theme', () => { fill.value('theme', settings.theme); },
+      (v) => ({ theme: v }));
+    bindOnce('font-size', () => { fill.value('font-size', settings.fontSize); },
+      (v) => ({ fontSize: v }));
+  }
+
+  /** Reflect the saved settings in the form.  Runs on every save. */
+  function render() {
+    fill.check('enabled', settings.enabled !== false);
+    fill.value('trigger', settings.trigger);
+    fill.value('modifier', settings.modifier);
+    fill.value('hover-delay', settings.hoverDelay);
+    fill.value('hide-delay', settings.hideDelay);
+    fill.value('max-selection-words', settings.maxSelectionWords);
+    fill.value('max-selection-chars', settings.maxSelectionChars);
+    fill.check('allow-frames', settings.allowFrames === true);
+    fill.check('show-romanization', settings.showRomanization !== false);
+    fill.value('scheme', settings.romanizationScheme);
+    fill.check('show-derived', settings.showDerived !== false);
+    fill.check('show-tts', settings.showTts !== false);
+    fill.check('show-source', settings.showSource !== false);
+    fill.value('max-matches', settings.maxMatches);
+    fill.value('theme', settings.theme);
+    fill.value('font-size', settings.fontSize);
+
     const hosts = byId('disabled-hosts');
     if (document.activeElement !== hosts) {
       hosts.value = settings.disabledHosts.join('\n');
     }
+    // The modifier only means something for the hover triggers, so it is hidden
+    // rather than left on screen as a setting that would do nothing.
     const modifierRow = byId('modifier-row');
     if (modifierRow) {
-      modifierRow.style.display = settings.trigger === 'modifier' ? '' : 'none';
+      modifierRow.style.display = settings.trigger === 'selection' ? 'none' : '';
     }
     renderPacks();
   }
@@ -200,6 +262,7 @@
       catalog = null;
     }
     render();
+    bind();
     wireStatic();
   }
 

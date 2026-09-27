@@ -1,15 +1,15 @@
 /**
- * Lightweight inflection handling for Hindi and Marathi.
+ * Lightweight inflection handling.
  *
- * Both languages are heavily inflected, so a reader hovering over लड़कियों
- * (girls, oblique plural) or करतात (they do) must still find लड़की / करणे.
- * This module turns a surface form into an ordered list of *lemma candidates*;
- * the caller looks up the surface form itself first and then walks the
- * candidates, so a wrong guess can never shadow a genuine entry.
+ * The extension reads ENGLISH and answers in Hindi, so the headwords stored in
+ * the packs are English base forms.  A reader selecting "running" or "cats" must
+ * still reach "run" and "cat", which needs English lemmatisation.  The Hindi
+ * table covers the other case: a Devanagari lemma reached from a
+ * stem-final ending, which is the shape an oblique or a verb form takes.
  *
- * The tables are deliberately heuristic and data-free: suffix rewrites plus a
- * short list of very common irregulars. Each rule carries a short label that
- * the tooltip shows ("plural", "verb form", ...) so the user can see why an
+ * Both tables are deliberately heuristic and data-free: suffix rewrites plus
+ * a short list of very common irregulars.  Each rule carries a short label that
+ * the tooltip shows ("plural", "past tense", ...) so the user can see why an
  * entry was offered.
  */
 (function (global) {
@@ -17,6 +17,80 @@
 
   /** Devanagari consonant at the end of a stem, used for the -ā / -ī expansion. */
   const CONSONANT_END = /[\u0915-\u0939\u0958-\u095f\u0931\u0934]$/;
+
+  /**
+   * A doubled final consonant before -ed/-ing: "stopped" -> "stop", "running"
+   * -> "run".  Only a single consonant is unwrapped, and only when the stem is
+   * long enough that the result is still a plausible word.
+   */
+  const EN_DOUBLING = /([^aeiou])\1$/;
+
+  const ENGLISH = {
+    rules: [
+      // ---- nouns and adjectives ------------------------------------------
+      { s: 'ies', r: 'y', l: 'plural' },
+      { s: 'es', r: '', l: 'plural' },
+      { s: 's', r: '', l: 'plural' },
+      { s: "['\u2019]s", r: '', l: 'possessive' },
+      { s: 'ier', r: 'y', l: 'comparative' },
+      { s: 'iest', r: 'y', l: 'superlative' },
+      { s: 'er', r: '', l: 'comparative' },
+      { s: 'est', r: '', l: 'superlative' },
+      { s: 'ier', r: 'er', l: 'comparative' },
+      { s: 'iest', r: 'est', l: 'superlative' },
+      { s: 'ier', r: '', l: 'comparative' },
+      { s: 'iest', r: '', l: 'superlative' },
+      // ---- verbs -----------------------------------------------------------
+      { s: 'ies', r: 'y', l: 'third person singular' },
+      { s: 'ied', r: 'y', l: 'past tense' },
+      { s: 'ing', r: '', l: 'gerund' },
+      { s: 'ing', r: 'e', l: 'gerund' },
+      { s: 'ed', r: '', l: 'past tense' },
+      { s: 'ed', r: 'e', l: 'past tense' },
+      { s: 'ed', r: 'y', l: 'past tense' },
+      { s: 'es', r: '', l: 'third person singular' },
+      { s: 's', r: '', l: 'third person singular' },
+      // ---- adverbs ---------------------------------------------------------
+      { s: 'ly', r: '', l: 'adverb' },
+      { s: 'ily', r: 'y', l: 'adverb' },
+      { s: 'ally', r: 'al', l: 'adverb' },
+    ],
+    expand: [],
+    exceptions: {
+      // Irregular plurals that no suffix rule can reach.
+      children: 'child', men: 'man', women: 'woman', people: 'person',
+      feet: 'foot', teeth: 'tooth', geese: 'goose', mice: 'mouse',
+      lice: 'louse', oxen: 'ox', sheep: 'sheep', fish: 'fish',
+      series: 'series', species: 'species', deer: 'deer',
+      // Irregular verbs.
+      was: 'be', were: 'be', been: 'be', am: 'be', is: 'be', are: 'be',
+      had: 'have', has: 'have', did: 'do', does: 'do', done: 'do',
+      said: 'say', went: 'go', gone: 'go', goes: 'go',
+      made: 'make', knew: 'know', known: 'know', thought: 'think',
+      took: 'take', taken: 'take', gave: 'give', given: 'give',
+      came: 'come', saw: 'see', seen: 'see', got: 'get',
+      told: 'tell', became: 'become', found: 'find', felt: 'feel',
+      left: 'leave', put: 'put', kept: 'keep', held: 'hold',
+      wrote: 'write', written: 'write', stood: 'stand', heard: 'hear',
+      let: 'let', meant: 'mean', met: 'meet', ran: 'run',
+      paid: 'pay', sat: 'sit', spoke: 'speak', spoken: 'speak',
+      lay: 'lie', led: 'lead', grew: 'grow', grown: 'grow',
+      lost: 'lose', fell: 'fall', fallen: 'fall', sent: 'send',
+      built: 'build', understood: 'understand', drew: 'draw',
+      drawn: 'draw', broke: 'break', broken: 'break', spent: 'spend',
+      cut: 'cut', rose: 'rise', risen: 'rise', drove: 'drive',
+      driven: 'drive', bought: 'buy', wore: 'wear', worn: 'wear',
+      chose: 'choose', chosen: 'choose', ate: 'eat', eaten: 'eat',
+      taught: 'teach', caught: 'catch', dealt: 'deal', won: 'win',
+      forgot: 'forget', forgotten: 'forget', began: 'begin',
+      begun: 'begin', flew: 'fly', flown: 'fly', threw: 'throw',
+      thrown: 'throw', knew: 'know', children: 'child',
+      // Contractions and adverbs that the suffix rules mangle.
+      "don't": 'do', "doesn't": 'do', "didn't": 'do', "isn't": 'be',
+      "aren't": 'be', "wasn't": 'be', "weren't": 'be', "can't": 'can',
+      "won't": 'will', "n't": 'not', 'cannot': 'can',
+    },
+  };
 
   const HINDI = {
     rules: [
@@ -86,101 +160,38 @@
     },
   };
 
-  const MARATHI = {
-    rules: [
-      // ---- nouns ----------------------------------------------------------
-      { s: '्यां', r: 'ा', l: 'oblique plural' },
-      { s: 'ांना', r: '', l: 'case form' },
-      { s: 'ांमध्ये', r: '', l: 'case form' },
-      { s: 'ांपासून', r: '', l: 'case form' },
-      { s: 'ांशी', r: '', l: 'case form' },
-      { s: 'ांकडे', r: '', l: 'case form' },
-      { s: 'ांस', r: '', l: 'case form' },
-      { s: 'ांवर', r: '', l: 'case form' },
-      { s: 'ांत', r: '', l: 'case form' },
-      { s: 'ांचा', r: 'ा', l: 'genitive' },
-      { s: 'ांची', r: 'ा', l: 'genitive' },
-      { s: 'ांचे', r: 'ा', l: 'genitive' },
-      { s: 'ां', r: '', l: 'plural / oblique' },
-      { s: 'ां', r: 'ा', l: 'plural / oblique' },
-      { s: 'च्या', r: '', l: 'genitive' },
-      { s: 'चा', r: '', l: 'genitive' },
-      { s: 'ची', r: '', l: 'genitive' },
-      { s: 'चे', r: '', l: 'genitive' },
-      { s: 'ासाठी', r: '', l: 'with साठी' },
-      { s: 'ापासून', r: '', l: 'with पासून' },
-      { s: 'ाला', r: 'ा', l: 'dative' },
-      { s: 'ाला', r: '', l: 'dative' },
-      { s: 'ाली', r: 'ा', l: 'dative' },
-      { s: 'ाले', r: 'ा', l: 'dative' },
-      { s: 'ाने', r: 'ा', l: 'instrumental' },
-      { s: 'ाशी', r: 'ा', l: 'with शी' },
-      { s: 'ला', r: '', l: 'dative' },
-      { s: 'ली', r: '', l: 'dative' },
-      { s: 'ले', r: '', l: 'dative' },
-      { s: 'ने', r: '', l: 'instrumental' },
-      { s: 'मध्ये', r: '', l: 'with मध्ये' },
-      { s: 'कडे', r: '', l: 'with कडे' },
-      { s: 'शी', r: '', l: 'with शी' },
-      { s: 'वर', r: '', l: 'with वर' },
-      { s: 'त', r: '', l: 'locative' },
-      { s: 'ं', r: '', l: 'plural' },
-      { s: 'े', r: 'ा', l: 'plural / oblique' },
-      { s: 'े', r: '', l: 'plural / oblique' },
-      { s: 'ी', r: '', l: 'feminine' },
-      { s: 'ा', r: '', l: 'stem' },
-      // ---- verbs -----------------------------------------------------------
-      { s: 'ण्यासाठी', r: 'णे', l: 'verbal noun' },
-      { s: 'ण्याचा', r: 'णे', l: 'verbal noun' },
-      { s: 'ण्याची', r: 'णे', l: 'verbal noun' },
-      { s: 'ण्याचे', r: 'णे', l: 'verbal noun' },
-      { s: 'ण्यास', r: 'णे', l: 'verbal noun' },
-      { s: 'णार', r: 'णे', l: 'future participle' },
-      { s: 'लेला', r: 'णे', l: 'perfective participle' },
-      { s: 'लेली', r: 'णे', l: 'perfective participle' },
-      { s: 'लेले', r: 'णे', l: 'perfective participle' },
-      { s: 'ताना', r: 'णे', l: 'simultaneous' },
-      { s: 'तात', r: 'णे', l: 'present tense' },
-      { s: 'तो', r: 'णे', l: 'present tense' },
-      { s: 'ते', r: 'णे', l: 'present tense' },
-      { s: 'ती', r: 'णे', l: 'present tense' },
-      { s: 'वून', r: 'णे', l: 'conjunctive participle' },
-      { s: 'ून', r: 'णे', l: 'conjunctive participle' },
-      { s: 'ल्या', r: 'णे', l: 'past tense' },
-      { s: 'ला', r: 'णे', l: 'past tense' },
-      { s: 'ली', r: 'णे', l: 'past tense' },
-      { s: 'ले', r: 'णे', l: 'past tense' },
-    ],
-    expand: [
-      { r: 'ा', l: 'stem + ा' },
-      { r: 'ी', l: 'stem + ी' },
-      { r: 'णे', l: 'stem + णे' },
-    ],
-    exceptions: {
-      'मुले': 'मूल', 'मुलां': 'मूल', 'मुलांना': 'मूल',
-      'गेला': 'जाणे', 'गेली': 'जाणे', 'गेले': 'जाणे', 'गेल्या': 'जाणे',
-      'आला': 'येणे', 'आली': 'येणे', 'आले': 'येणे', 'आल्या': 'येणे',
-      'केला': 'करणे', 'केली': 'करणे', 'केले': 'करणे',
-      'दिला': 'देणे', 'दिली': 'देणे', 'दिले': 'देणे',
-      'घेतला': 'घेणे', 'घेतली': 'घेणे', 'घेतले': 'घेणे',
-      'आहे': 'असणे', 'आहेत': 'असणे', 'होता': 'होणे', 'होते': 'होणे', 'होतो': 'होणे',
-      'झाले': 'होणे', 'झाला': 'होणे', 'झाली': 'होणे',
-    },
-  };
 
-  const TABLES = { hi: HINDI, mr: MARATHI };
+  const TABLES = { en: ENGLISH, hi: HINDI };
 
   function tableFor(language) {
-    return TABLES[language] || HINDI;
+    return TABLES[language] || null;
   }
 
   const MAX_CANDIDATES = 8;
+  /** Below this length a rewritten stem is noise rather than a lemma. */
+  const MIN_STEM = 2;
+
+  /**
+   * Undo English consonant doubling: "stopped" -> "stop", "running" -> "run".
+   * Returns '' when the word does not double, or when unwrapping would leave a
+   * stem too short to be a word ("odd" must not become "o").
+   */
+  function undouble(stem) {
+    if (stem.length < MIN_STEM + 1) {
+      return '';
+    }
+    const match = stem.match(EN_DOUBLING);
+    if (!match) {
+      return '';
+    }
+    return stem.slice(0, -1);
+  }
 
   /**
    * Lemma candidates for a surface form, best first.
    *
    * @param {string} word
-   * @param {'hi'|'mr'} language
+   * @param {'en'|'hi'} language
    * @returns {{word: string, label: string}[]} never includes `word` itself
    */
   function candidates(word, language) {
@@ -188,11 +199,17 @@
       return [];
     }
     const table = tableFor(language);
-    const seen = new Set([word]);
+    if (!table) {
+      return [];
+    }
+    // English rules are written in lower case; the index keys are lower case
+    // too, so normalise once here and let the caller looseKey() the result.
+    const subject = table === ENGLISH ? word.toLowerCase() : word;
+    const seen = new Set([word, subject]);
     const results = [];
 
     const push = (candidate, label) => {
-      if (!candidate || candidate.length < 2 || seen.has(candidate)) {
+      if (!candidate || candidate.length < MIN_STEM || seen.has(candidate)) {
         return false;
       }
       seen.add(candidate);
@@ -200,8 +217,9 @@
       return results.length >= MAX_CANDIDATES;
     };
 
-    if (table.exceptions[word]) {
-      push(table.exceptions[word], 'irregular');
+    const irregular = table.exceptions[subject] || table.exceptions[word];
+    if (irregular) {
+      push(irregular, 'irregular');
     }
 
     const stems = [];
@@ -209,14 +227,31 @@
       if (results.length >= MAX_CANDIDATES) {
         break;
       }
-      if (!word.endsWith(rule.s) || word.length === rule.s.length) {
+      if (!subject.endsWith(rule.s) || subject.length === rule.s.length) {
         continue;
       }
-      const stem = word.slice(0, word.length - rule.s.length);
+      const stem = subject.slice(0, subject.length - rule.s.length);
       if (push(stem + rule.r, rule.l)) {
         break;
       }
       stems.push({ stem, label: rule.l });
+    }
+
+    if (table === ENGLISH) {
+      // Second pass: only the verb-ish suffixes produce a doubled stem worth
+      // unwrapping, and only when the plain rewrite is not already a candidate.
+      if (/ing$|ed$/.test(subject)) {
+        for (const entry of stems) {
+          if (results.length >= MAX_CANDIDATES) {
+            break;
+          }
+          const base = undouble(entry.stem);
+          if (base) {
+            push(base, 'doubled ' + entry.label);
+          }
+        }
+      }
+      return results.slice(0, MAX_CANDIDATES);
     }
 
     // Second pass: a stripped consonant stem often needs a final vowel back

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Devanagari Popup Dictionary &ndash; Settings</title>
+  <title>English to Hindi &ndash; Settings</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
@@ -10,8 +10,8 @@
     <header class="head">
       <span class="glyph" aria-hidden="true">&#2309;</span>
       <div>
-        <h1>Devanagari Popup Dictionary</h1>
-        <p class="sub">Hover over any Hindi or Marathi word to see its pronunciation, part of speech and English meaning.</p>
+        <h1>English to Hindi</h1>
+        <p class="sub">Select an English word on any page to see its Hindi meaning, pronunciation and part of speech.</p>
       </div>
     </header>
 
@@ -19,35 +19,26 @@
       <h2 id="h-general">General</h2>
       <label class="row"><input type="checkbox" id="enabled">
         <span><strong>Enable the dictionary</strong><br><small>Master switch. When off, nothing is injected or fetched.</small></span></label>
-      <label class="row"><input type="checkbox" id="lang-hi">
-        <span><strong>Hindi</strong> <small id="count-hi"></small></span></label>
-      <label class="row"><input type="checkbox" id="lang-mr">
-        <span><strong>Marathi</strong> <small id="count-mr"></small></span></label>
-      <div class="row">
-        <label for="primary">Look up first in</label>
-        <select id="primary">
-          <option value="hi">Hindi</option>
-          <option value="mr">Marathi</option>
-        </select>
-      </div>
     </section>
 
     <section class="card" aria-labelledby="h-trigger">
       <h2 id="h-trigger">Trigger</h2>
       <div class="row">
-        <label for="trigger">Show the popup on</label>
+        <label for="trigger">Show the meaning when you</label>
         <select id="trigger">
-          <option value="hover">Hover</option>
-          <option value="modifier">Modifier + hover</option>
+          <option value="selection">Select a word and release the mouse</option>
+          <option value="hover">Hover over a word</option>
+          <option value="both">Either one</option>
         </select>
       </div>
       <div class="row" id="modifier-row">
-        <label for="modifier">Modifier key</label>
+        <label for="modifier">Hover needs a key held down</label>
         <select id="modifier">
+          <option value="none">No key</option>
           <option value="Shift">Shift</option>
           <option value="Control">Ctrl</option>
           <option value="Alt">Alt</option>
-          <option value="Meta">Meta / Cmd</option>
+          <option value="Meta">Cmd</option>
         </select>
       </div>
       <div class="row">
@@ -59,17 +50,26 @@
         <input type="number" id="hide-delay" min="0" max="5000" step="10">
       </div>
       <label class="row"><input type="checkbox" id="allow-frames">
-        <span><strong>Also work inside frames</strong><br><small>Disabled by default; each frame loads its own copy of the dictionaries.</small></span></label>
+        <span><strong>Also work inside frames</strong><br><small>Looks up words inside embedded iframes too — video players, comment threads, search widgets. A frame that is switched off loads no dictionary data at all; it only costs the words you cannot look up.</small></span></label>
       <div class="row column">
         <label for="disabled-hosts"><strong>Disabled sites</strong>
           <small>One hostname per line.</small></label>
         <textarea id="disabled-hosts" rows="4" spellcheck="false" placeholder="one host per line"></textarea>
       </div>
+      <div class="row">
+        <label for="max-selection-words">Longest selection looked up (words)</label>
+        <input type="number" id="max-selection-words" min="1" max="10" step="1">
+      </div>
+      <div class="row">
+        <label for="max-selection-chars">Longest selection looked up (characters)</label>
+        <input type="number" id="max-selection-chars" min="10" max="200" step="4">
+      </div>
+      <p class="sub">A larger selection is ignored, so dragging across a paragraph or pressing Ctrl+A never opens a popup. URLs, numbers and Devanagari text are always ignored.</p>
     </section>
     <section class="card" aria-labelledby="h-popup">
       <h2 id="h-popup">Popup</h2>
       <label class="row"><input type="checkbox" id="show-romanization">
-        <span><strong>Show pronunciation (ISO 15919)</strong><br><small>Romanised transliteration of each Devanagari headword.</small></span></label>
+        <span><strong>Show pronunciation (ISO 15919)</strong><br><small>Romanised transliteration of the translation, so you can read or say it in Latin letters.</small></span></label>
       <div class="row">
         <label for="scheme">Pronunciation style</label>
         <select id="scheme">
@@ -78,11 +78,9 @@
         </select>
       </div>
       <label class="row"><input type="checkbox" id="show-derived">
-        <span><strong>Resolve inflections</strong><br><small>Offer the dictionary form of declined or conjugated words, e.g. &#2354;&#2337;&#2325;&#2367;&#2351;&#2379; &rarr; &#2354;&#2337;&#2325;&#2368;.</small></span></label>
-      <label class="row"><input type="checkbox" id="show-context">
-        <span><strong>Show the sentence under the cursor</strong></span></label>
+        <span><strong>Resolve inflections</strong><br><small>Offer the dictionary form of a declined or conjugated word, e.g. dogs &rarr; dog, ran &rarr; run.</small></span></label>
       <label class="row"><input type="checkbox" id="show-tts">
-        <span><strong>Speaker button</strong><br><small>Uses your system&rsquo;s Hindi/Marathi voice, if one is installed.</small></span></label>
+        <span><strong>Speaker button</strong><br><small>Speaks the translation using your system&rsquo;s Hindi voice, if one is installed.</small></span></label>
       <label class="row"><input type="checkbox" id="show-source">
         <span><strong>Show the dictionary name and licence</strong></span></label>
       <div class="row">
@@ -106,6 +104,7 @@
     <section class="card" aria-labelledby="h-sources">
       <h2 id="h-sources">Dictionary packs</h2>
       <p class="sub">Packs are shipped with the extension and read entirely offline. Toggle the ones you want.</p>
+      <p class="sub" id="pack-total"></p>
       <div id="packs"></div>
     </section>
 

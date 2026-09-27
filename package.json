@@ -1,8 +1,8 @@
 {
   "name": "devanagari-popup-dictionary",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Popup (hover) dictionary browser extension for Hindi and Marathi, in the spirit of Perapera Chinese.",
+  "description": "Selection-first dictionary browser extension: English to Hindi, in the spirit of Perapera Chinese and Rikaichamp.",
   "type": "commonjs",
   "license": "MIT",
   "scripts": {
