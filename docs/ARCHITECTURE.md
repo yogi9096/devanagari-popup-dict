@@ -266,6 +266,12 @@ The popup tooltip is attached to the page inside an open `ShadowRoot`:
   `Selection` / `document.caretRangeFromPoint` /
   `document.caretPositionFromPoint` to extract text offsets without wrapping
   elements.
+- The same isolation hides the debug hook: `__decDi` is set on the content
+  script's global, and Firefox gives every extension a sandbox per document, so
+  the page's `window` does not have it. `__decDi.lastDecline()` therefore fails
+  with "does not exist" in the *page* console even though the hook is set; it has
+  to be read with this extension's content-script context selected in the
+  DevTools console. Found by trying it, not by reading it.
 - Clean tear-down: the entire host is removed on click away, Escape press,
   or hover-off.
 - The popup is shown and hidden by toggling the `hidden` attribute, which needs

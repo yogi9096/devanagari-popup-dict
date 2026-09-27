@@ -321,6 +321,27 @@
       return this.pinned;
     }
 
+    /**
+     * The element a keystroke is actually going into, or null.
+     *
+     * `event.target` is normally the focused element, but it is not reliable on
+     * its own: an event dispatched at the document, or one retargeted out of a
+     * shadow tree, reports the document and would let a shortcut fire while the
+     * reader is typing.  `activeElement` is the authority on where the text goes,
+     * and a shadow host is not itself editable - the element inside it is.
+     */
+    activeElement() {
+      const doc = this.document;
+      const active = doc && doc.activeElement;
+      if (!active || !active.tagName) {
+        return null;
+      }
+      if (active.shadowRoot && active.shadowRoot.activeElement) {
+        return active.shadowRoot.activeElement;
+      }
+      return active;
+    }
+
     handleKey(event) {
       if (!this.visible || !this.result) {
         return;
@@ -329,7 +350,10 @@
       if (event.ctrlKey || event.altKey || event.metaKey) {
         return;
       }
-      if (isEditableTarget(event.target)) {
+      // Never swallow typing: the popup is very often open over a search box or
+      // a comment field, and a dictionary that eats the letter "a" there is
+      // worse than one with no shortcuts at all.
+      if (isEditableTarget(event.target) || isEditableTarget(this.activeElement())) {
         return;
       }
       let handled = true;

@@ -56,7 +56,14 @@ plausibly a lookup is declined before a single byte of data is fetched:
 | A single letter, or a token too long to be a word | ignored |
 
 Both length limits are adjustable in the options. To see why a particular
-selection was ignored, run `__decDi.lastDecline()` in the page console.
+selection was ignored, run `__decDi.lastDecline()` in the browser console.
+
+That hook lives in the **content script's sandbox**, not in the page, so it is not
+visible from the page console: open DevTools (<kbd>F12</kbd>), and in the Console
+pick this extension's content-script context from the execution-context dropdown
+at the top (it is labelled with the extension's name) before running the
+expression. The same context also exposes `__decDi.lookup('word')` for a lookup
+without a selection, and `__decDi.state` for the live state.
 
 ---
 

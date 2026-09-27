@@ -850,7 +850,13 @@
       return undefined;
     });
 
-    // Expose a tiny hook for debugging in the page console.
+    /*
+     * A tiny hook for debugging.  It is set on the content script's global, not
+     * on the page's window: Firefox gives every extension a sandbox per document,
+     * so `window.__decDi` is invisible from the page console and the hook has to
+     * be read with this extension's content-script context selected in the
+     * DevTools console (or the Browser Console).
+     */
     global.__decDi = {
       lookup: (word) => (state.dictionary
         ? state.dictionary.lookup(word, state.settings)

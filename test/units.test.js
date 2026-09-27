@@ -389,8 +389,7 @@ describe('tooltip helpers', () => {
       document: { addEventListener() {}, removeEventListener() {} },
       settings: { showTts: true },
       onRequestSpeak: () => pressed.push('speak'),
-      onRequestCopy: () => pressed.push('copy'),
-    });
+      onRequestCopy: () => pressed.push('copy'),    });
     view.result = { query: 'learn', matches: [{ headword: 'learn', gloss: 'सीखना', pack: { targetLang: 'hi' } }] };
     view.visible = true;
 
@@ -428,5 +427,53 @@ describe('tooltip helpers', () => {
     view.visible = false;
     assert.equal(press('a'), false);
     assert.deepEqual(pressed, ['speak', 'copy']);
+  });
+
+  it('asks the focused element, not just the event target, before shortcutting', () => {
+    // A real keypress targets the focused element, so event.target would usually
+    // do - but an event dispatched at the document, or one retargeted out of a
+    // shadow tree, reports the document while the reader is still typing in a
+    // field.  Relying on event.target alone swallowed the letter "a" there.
+    const spoken = [];
+    const field = { nodeType: 1, tagName: 'INPUT' };
+    const view = new tooltip.Tooltip({
+      document: { addEventListener() {}, removeEventListener() {}, activeElement: field },
+      settings: { showTts: true },
+      onRequestSpeak: () => spoken.push('speak'),
+      onRequestCopy: () => copied.push('copy'),
+    });
+    view.result = { query: 'learn', matches: [{ headword: 'learn', gloss: 'सीखना', pack: { targetLang: 'hi' } }] };
+    view.visible = true;
+
+    const press = (target) => {
+      const event = {
+        key: 'a',
+        target,
+        ctrlKey: false, altKey: false, metaKey: false,
+        preventDefault() { this.defaultPrevented = true; },
+        stopPropagation() {},
+      };
+      view.handleKey(event);
+      return event.defaultPrevented === true;
+    };
+
+    // The event landed on the document, but a field has focus.
+    assert.equal(press({ nodeType: 9, tagName: '#document' }), false);
+    assert.deepEqual(spoken, []);
+    // Targeting the field directly is caught too.
+    assert.equal(press(field), false);
+    assert.deepEqual(spoken, []);
+
+    // Nothing focused: the shortcut is ours again.
+    view.document.activeElement = { nodeType: 1, tagName: 'P', isContentEditable: false };
+    assert.equal(press({ nodeType: 1, tagName: 'P' }), true);
+    assert.deepEqual(spoken, ['speak']);
+
+    // A shadow host is not itself editable, but the element inside it is.
+    const inner = { nodeType: 1, tagName: 'TEXTAREA' };
+    view.document.activeElement = { nodeType: 1, tagName: 'MY-WIDGET', shadowRoot: { activeElement: inner } };
+    assert.equal(view.activeElement(), inner);
+    assert.equal(press({ nodeType: 1, tagName: 'P' }), false);
+    assert.deepEqual(spoken, ['speak']);
   });
 });
